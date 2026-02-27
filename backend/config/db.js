@@ -2,11 +2,11 @@ import pkg from "pg";
 const { Pool } = pkg;
 
 const pool = new Pool({
-  user: "postgres",
-  host: "localhost",
-  database: "jokesdb",
-  password: "utkarsh@2003",
-  port: 5432,
+  connectionString: process.env.DATABASE_URL,
+  ssl:
+    process.env.DATABASE_URL?.includes("render.com")
+      ? { rejectUnauthorized: false }
+      : false,
 });
 
 export default pool;
