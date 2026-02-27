@@ -69,7 +69,12 @@ export const logoutUser = () => {
   localStorage.removeItem("token");
   localStorage.removeItem("username");
   localStorage.removeItem("role");
-  window.location.href = "/"; // Send them to home/modal instead of a hardcoded /login route
+};
+
+
+export const deleteJoke = async (id) => {
+  const { data } = await api.delete(`/api/jokes/${id}`);
+  return data;
 };
 
 // ================= JOKE SERVICES =================

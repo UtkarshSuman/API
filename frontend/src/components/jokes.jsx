@@ -4,7 +4,9 @@ import {
   getAllJokes,
   getRandomJoke,
   getJokeById,
-  addJoke
+  addJoke,
+  deleteJoke,
+  logoutUser
 } from "../services/api.js";
 
 function Jokes() {
@@ -66,6 +68,23 @@ function Jokes() {
     }
   };
 
+
+  const handleLogout = () => {
+  logoutUser();
+  navigate("/login");   // or "/" depending on where your modal is
+};
+
+  const handleDelete = async (id) => {
+    try {
+      await deleteJoke(id);
+
+      // Remove joke from UI instantly
+      setJokes(jokes.filter((joke) => joke.id !== id));
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
   // ✅ Add Joke
   const handleAddJoke = async () => {
     if (!newJoke.trim()) return;
@@ -75,7 +94,7 @@ function Jokes() {
 
     try {
       const created = await addJoke(newJoke);
-      setJokes(prev => [...prev, created]);
+      setJokes((prev) => [...prev, created]);
       setNewJoke("");
     } catch (err) {
       setError(err.message || "Failed to add joke");
@@ -87,6 +106,10 @@ function Jokes() {
   return (
     <div className="page-bg">
       <h1 className="welcome-text">Welcome to Jokes App 🎉</h1>
+
+      <button onClick={handleLogout} className="logout-btn">
+       Logout
+      </button>
 
       <div className="jokes-container">
         <h2>😂 Jokes Corner</h2>
@@ -100,7 +123,7 @@ function Jokes() {
           <input
             placeholder="Enter Joke ID..."
             value={jokeId}
-            onChange={e => setJokeId(e.target.value)}
+            onChange={(e) => setJokeId(e.target.value)}
           />
           <button onClick={handleGetById}>Find Joke</button>
         </div>
@@ -109,7 +132,7 @@ function Jokes() {
           <input
             placeholder="Write a new joke..."
             value={newJoke}
-            onChange={e => setNewJoke(e.target.value)}
+            onChange={(e) => setNewJoke(e.target.value)}
           />
           <button onClick={handleAddJoke}>Add Joke</button>
         </div>
@@ -121,17 +144,25 @@ function Jokes() {
         {error && <p className="error">{error}</p>}
 
         {/* Empty State */}
-        {!loading && jokes.length === 0 && (
-          <p>No jokes found 😅</p>
-        )}
+        {!loading && jokes.length === 0 && <p>No jokes found 😅</p>}
 
         {/* Joke List */}
         <ul className="jokes-list">
-          {jokes.map(j => (
+          {jokes.map((j) => (
             <li key={j.id} className="joke-card">
               <p>{j.content}</p>
-              {j.author_name && (
-                <small>👤 {j.author_name}</small>
+
+              {j.author_name && <small>By: {j.author_name}</small>}
+
+              {/* Show delete button only for admin or joke owner */}
+              {(localStorage.getItem("role") === "admin" ||
+                localStorage.getItem("username") === j.author_email) && (
+                <button
+                  className="delete-btn"
+                  onClick={() => handleDelete(j.id)}
+                >
+                  Delete
+                </button>
               )}
             </li>
           ))}

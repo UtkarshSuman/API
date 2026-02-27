@@ -104,4 +104,38 @@ router.post("/", protect, async (req, res) => {
   }
 });
 
+// ================= DELETE JOKE =================
+router.delete("/:id", protect, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Get joke first
+    const result = await pool.query(
+      "SELECT * FROM jokes WHERE id = $1",
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Joke not found" });
+    }
+
+    const joke = result.rows[0];
+
+    // Allow delete only if:
+    // 1. User is author
+    // 2. OR user is admin
+    if (joke.author_id !== req.user.id && req.user.role !== "admin") {
+      return res.status(403).json({ message: "Not authorized to delete" });
+    }
+
+    await pool.query("DELETE FROM jokes WHERE id = $1", [id]);
+
+    res.json({ message: "Joke deleted successfully" });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 export default router;

@@ -13,7 +13,7 @@ const protect = async (req, res, next) => {
 
     // Fetch user from PostgreSQL
     const result = await pool.query(
-      "SELECT id, name, email FROM users WHERE id = $1",
+      "SELECT id, name, email, role FROM users WHERE id = $1",
       [decoded.id]
     );
 
