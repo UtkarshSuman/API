@@ -12,20 +12,12 @@ import jokeRoutes from "./routes/jokeRoutes.js";
 const app = express();
 
 // CORS
-const allowedOrigins = [
-  "http://localhost:5173",
-  "https://jokes-app1-virid.vercel.app/"
-];
-
 app.use(
   cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
+    origin: [
+      "http://localhost:5173",
+      "https://jokes-app1-virid.vercel.app"
+    ],
     credentials: true,
   })
 );
