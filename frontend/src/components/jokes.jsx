@@ -8,6 +8,7 @@ import {
   deleteJoke,
   logoutUser
 } from "../services/api.js";
+import TopNav from "./TopNav.jsx";
 
 function Jokes() {
   const navigate = useNavigate();
@@ -105,11 +106,17 @@ function Jokes() {
 
   return (
     <div className="page-bg">
+      <TopNav/>
       <h1 className="welcome-text">Welcome to Jokes App 🎉</h1>
 
-      <button onClick={handleLogout} className="logout-btn">
+      
+
+      {/* <button onClick={handleLogout} className="logout-btn">
        Logout
       </button>
+      <button onClick={() => navigate("/login")}>
+        Open Login
+      </button> */}
 
       <div className="jokes-container">
         <h2>😂 Jokes Corner</h2>
