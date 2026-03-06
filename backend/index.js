@@ -16,7 +16,7 @@ app.use(
   cors({
     origin: [
       "http://localhost:5173",
-      "https://jokes-app1-virid.vercel.app"
+      "https://jokesapp-red.vercel.app/"
     ],
     credentials: true,
   })
