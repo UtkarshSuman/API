@@ -1,5 +1,6 @@
 import dotenv from "dotenv";
 dotenv.config();
+
 import express from "express";
 import pool from "./config/db.js";
 import cors from "cors";
@@ -8,21 +9,30 @@ import rateLimit from "express-rate-limit";
 import authRoutes from "./routes/authRoutes.js";
 import jokeRoutes from "./routes/jokeRoutes.js";
 
-
 const app = express();
 
-// ✅ CORS
+// CORS
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://your-frontend-url.onrender.com"
+];
+
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
   })
 );
-
-// ✅ JSON Middleware
+// JSON Middleware
 app.use(express.json());
 
-// ✅ Rate Limiter (Global)
+// Rate Limiter
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
@@ -31,7 +41,7 @@ const apiLimiter = rateLimit({
 
 app.use(apiLimiter);
 
-// ✅ Routes
+// Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/jokes", jokeRoutes);
 
@@ -42,6 +52,15 @@ app.get("/", (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+// Start server after DB connection
+pool.query("SELECT NOW()")
+  .then(() => {
+    console.log("Database connected");
+
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error("DB ERROR:", err);
+  });

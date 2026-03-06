@@ -56,7 +56,11 @@ router.get("/random", async (req, res) => {
 
 // ================= GET JOKE BY ID =================
 router.get("/:id", async (req, res) => {
-  const { id } = req.params;
+  const id = parseInt(req.params.id);
+
+if (isNaN(id)) {
+  return res.status(400).json({ message: "Invalid joke id" });
+}
 
   try {
     const result = await pool.query(
@@ -90,10 +94,14 @@ router.get("/:id", async (req, res) => {
 router.post("/", protect, async (req, res) => {
   const { content } = req.body;
 
+  if (!content || content.trim() === "") {
+    return res.status(400).json({ message: "Joke content is required" });
+  }
+
   try {
     const result = await pool.query(
       "INSERT INTO jokes (content, author_id) VALUES ($1, $2) RETURNING *",
-      [content, req.user.id]   // user id from JWT
+      [content, req.user.id]
     );
 
     res.status(201).json(result.rows[0]);
@@ -103,15 +111,17 @@ router.post("/", protect, async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
-
 // ================= DELETE JOKE =================
 router.delete("/:id", protect, async (req, res) => {
-  const { id } = req.params;
+  const id = parseInt(req.params.id);
+
+if (isNaN(id)) {
+  return res.status(400).json({ message: "Invalid joke id" });
+}
 
   try {
-    // Get joke first
     const result = await pool.query(
-      "SELECT * FROM jokes WHERE id = $1",
+      "SELECT author_id FROM jokes WHERE id = $1",
       [id]
     );
 
@@ -121,9 +131,6 @@ router.delete("/:id", protect, async (req, res) => {
 
     const joke = result.rows[0];
 
-    // Allow delete only if:
-    // 1. User is author
-    // 2. OR user is admin
     if (joke.author_id !== req.user.id && req.user.role !== "admin") {
       return res.status(403).json({ message: "Not authorized to delete" });
     }
