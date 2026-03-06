@@ -14,7 +14,7 @@ const app = express();
 // CORS
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://your-frontend-url.onrender.com"
+  "https://jokes-app1-virid.vercel.app/"
 ];
 
 app.use(
