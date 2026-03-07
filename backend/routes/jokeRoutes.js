@@ -12,6 +12,7 @@ router.get("/", async (req, res) => {
       `SELECT jokes.id,
               jokes.content,
               jokes.created_at,
+              jokes.likes,
               users.name AS author_name,
               users.email AS author_email
        FROM jokes
@@ -148,18 +149,22 @@ if (isNaN(id)) {
 router.put("/:id", protect, async (req, res) => {
   const jokeId = req.params.id;
   const { content } = req.body;
-  const userId = req.user.id;
-  
   try {
+
+    if (!req.user) {
+      return res.status(401).json({ message: "User not authenticated" });
+    }
+
+    const userId = parseInt(req.user.id);
 
     // Validate input
     if (!content || content.trim() === "") {
       return res.status(400).json({
         message: "Joke content cannot be empty"
       });
-    } 
+    }
 
-    const joke = await db.query(
+    const joke = await pool.query(
       "SELECT * FROM jokes WHERE id = $1",
       [jokeId]
     );
@@ -168,29 +173,38 @@ router.put("/:id", protect, async (req, res) => {
       return res.status(404).json({ message: "Joke not found" });
     }
 
-    // Only author can edit
-    if (joke.rows[0].author_id !== userId) {
+    // Convert to number to avoid type mismatch
+    if (Number(joke.rows[0].author_id) !== Number(userId)) {
       return res.status(403).json({ message: "Unauthorized" });
     }
 
-    const updatedJoke = await db.query(
+    const updatedJoke = await pool.query(
       "UPDATE jokes SET content = $1 WHERE id = $2 RETURNING *",
-      [content, jokeId]
+      [content.trim(), jokeId]
     );
 
     res.json(updatedJoke.rows[0]);
+
   } catch (err) {
-    res.status(500).json({ message: "Server error" });
+
+    console.error("Edit joke error:", err);
+
+    res.status(500).json({ message: err.message });
+
   }
 });
 
 router.post("/:id/like", protect, async (req, res) => {
+  console.log("helo");
+  if (!req.user) {
+  return res.status(401).json({ message: "User not authenticated" });
+}
 
-  const jokeId = req.params.id;
+  const jokeId = parseInt(req.params.id);
 
   try {
 
-    const result = await db.query(
+    const result = await pool.query(
       `UPDATE jokes
        SET likes = likes + 1
        WHERE id = $1
@@ -207,14 +221,9 @@ router.post("/:id/like", protect, async (req, res) => {
     res.json(result.rows[0]);
 
   } catch (err) {
-
-    console.error(err);
-
-    res.status(500).json({
-      message: "Server error"
-    });
-
-  }
+  console.error("Edit joke error:", err);
+  res.status(500).json({ message: err.message });
+}
 
 });
 

@@ -1,8 +1,14 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import handleLogout  from "../services/api";
+import { logoutUser } from "../services/api";
 export default function TopNav({ isLoggedIn, onLogin, onLogout }) {
   const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logoutUser();
+    navigate("/login", { replace: true });
+  };
+
   return (
     <nav className="top-nav">
       <div className="brand">

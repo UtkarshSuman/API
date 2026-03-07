@@ -64,16 +64,14 @@ export const registerUser = async (userData) => {
   const { data } = await api.post("/api/auth/register", userData);
   return data;
 };
-
-export const handleLogout = () => {
-    logoutUser();
-    navigate("/login");
-}; 
+ 
 
 export const logoutUser = () => {
   localStorage.removeItem("token");
   localStorage.removeItem("username");
   localStorage.removeItem("role");
+  localStorage.removeItem("userId");
+  
 };
 
 
@@ -107,6 +105,7 @@ export const addJoke = async (content) => {
 // ================= UPDATE JOKE =================
 
 export const updateJoke = async (id, content) => {
+  console.log("Updating joke:", id, content);
   const { data } = await api.put(`/api/jokes/${id}`, { content });
   return data;
 };
