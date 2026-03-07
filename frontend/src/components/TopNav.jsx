@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { logoutUser } from "../services/api";
+import handleLogout  from "../services/api";
 export default function TopNav({ isLoggedIn, onLogin, onLogout }) {
   const navigate = useNavigate();
   return (
@@ -20,7 +20,7 @@ export default function TopNav({ isLoggedIn, onLogin, onLogout }) {
         </button>
         <button
           className="btn-auth btn-logout"
-          onClick={logoutUser}
+          onClick={handleLogout}
           
         >
           Logout

@@ -145,4 +145,77 @@ if (isNaN(id)) {
   }
 });
 
+router.put("/:id", protect, async (req, res) => {
+  const jokeId = req.params.id;
+  const { content } = req.body;
+  const userId = req.user.id;
+  
+  try {
+
+    // Validate input
+    if (!content || content.trim() === "") {
+      return res.status(400).json({
+        message: "Joke content cannot be empty"
+      });
+    } 
+
+    const joke = await db.query(
+      "SELECT * FROM jokes WHERE id = $1",
+      [jokeId]
+    );
+
+    if (joke.rows.length === 0) {
+      return res.status(404).json({ message: "Joke not found" });
+    }
+
+    // Only author can edit
+    if (joke.rows[0].author_id !== userId) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    const updatedJoke = await db.query(
+      "UPDATE jokes SET content = $1 WHERE id = $2 RETURNING *",
+      [content, jokeId]
+    );
+
+    res.json(updatedJoke.rows[0]);
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.post("/:id/like", protect, async (req, res) => {
+
+  const jokeId = req.params.id;
+
+  try {
+
+    const result = await db.query(
+      `UPDATE jokes
+       SET likes = likes + 1
+       WHERE id = $1
+       RETURNING *`,
+      [jokeId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        message: "Joke not found"
+      });
+    }
+
+    res.json(result.rows[0]);
+
+  } catch (err) {
+
+    console.error(err);
+
+    res.status(500).json({
+      message: "Server error"
+    });
+
+  }
+
+});
+
 export default router;

@@ -6,7 +6,7 @@ import { loginUser, registerUser } from "../services/api";
 export default function AuthModal() {
   const [isLogin, setIsLogin] = useState(true);
   const [role, setRole] = useState("user");
-  const [name, setName] = useState(""); // ✅ Added state for the Name
+  const [name, setName] = useState(""); 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -19,14 +19,13 @@ export default function AuthModal() {
 
     try {
       if (isLogin) {
-        // ✅ Login logic
-        await loginUser(username, password); // Note: Role isn't needed for login, the DB already knows it
+        
+        await loginUser(username, password); // Role isn't needed for login, the DB already knows it
         navigate("/");
       } else {
-        // ✅ Registration logic
+        
         await registerUser({ name, email: username, password, role }); 
         
-        // After successful registration, you can either auto-login the user or switch back to the login tab:
         setIsLogin(true);
         setError("Registration successful! Please log in.");
       }
@@ -52,8 +51,8 @@ export default function AuthModal() {
             <input 
               type="text" 
               placeholder="Full Name" 
-              value={name} // ✅ Bind to state
-              onChange={(e) => setName(e.target.value)} // ✅ Capture input
+              value={name} 
+              onChange={(e) => setName(e.target.value)} 
               required 
             />
           )}

@@ -3,7 +3,7 @@ import axios from "axios";
 // ================= BASE URL =================
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-// ================= AXIOS INSTANCE =================
+// ================= AXIOS   =================
 const api = axios.create({
   baseURL: API_URL,
   headers: {
@@ -34,12 +34,12 @@ api.interceptors.response.use(
     if (
       error.response &&
       (error.response.status === 401 || error.response.status === 403) &&
-      !isAuthRoute // ✅ Prevents an infinite loop if the user enters a wrong password
+      !isAuthRoute //  Prevents an infinite loop if the user enters a wrong password
     ) {
       logoutUser(); 
     }
 
-    // ✅ Better fallback for Network Errors (when the server is totally unreachable)
+    // Better fallback for Network Errors (when the server is totally unreachable)
     const errorMessage =
       error.response?.data?.message || error.message || "An unexpected error occurred";
 
@@ -55,6 +55,7 @@ export const loginUser = async (email, password) => {
   localStorage.setItem("token", data.token);
   localStorage.setItem("username", data.username);
   localStorage.setItem("role", data.role);
+  localStorage.setItem("userId", data.id);
 
   return data;
 };
@@ -64,7 +65,11 @@ export const registerUser = async (userData) => {
   return data;
 };
 
-// ✅ Centralized logout function
+export const handleLogout = () => {
+    logoutUser();
+    navigate("/login");
+}; 
+
 export const logoutUser = () => {
   localStorage.removeItem("token");
   localStorage.removeItem("username");
@@ -96,6 +101,20 @@ export const getJokeById = async (id) => {
 
 export const addJoke = async (content) => {
   const { data } = await api.post("/api/jokes", { content });
+  return data;
+};
+
+// ================= UPDATE JOKE =================
+
+export const updateJoke = async (id, content) => {
+  const { data } = await api.put(`/api/jokes/${id}`, { content });
+  return data;
+};
+
+// ================= LIKE JOKE =================
+// backend me abhi nhi dala hai like ka
+export const likeJoke = async (id) => {
+  const { data } = await api.post(`/api/jokes/${id}/like`);
   return data;
 };
 

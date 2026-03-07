@@ -6,9 +6,12 @@ import {
   getJokeById,
   addJoke,
   deleteJoke,
-  logoutUser
+  updateJoke,
+  likeJoke,
+  logoutUser,
 } from "../services/api.js";
 import TopNav from "./TopNav.jsx";
+
 
 function Jokes() {
   const navigate = useNavigate();
@@ -16,11 +19,17 @@ function Jokes() {
   const [jokes, setJokes] = useState([]);
   const [jokeId, setJokeId] = useState("");
   const [newJoke, setNewJoke] = useState("");
-
+  const [editingId, setEditingId] = useState(null);
+  const [editText, setEditText] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [likedId, setLikedId] = useState(null);
+  const [hearts, setHearts] = useState([]);
+  const [activeLikeId, setActiveLikeId] = useState(null);
 
-  // ✅ Get All Jokes
+  const userId = localStorage.getItem("userId");
+
+  // Get All Jokes
   const handleGetAll = async () => {
     setLoading(true);
     setError(null);
@@ -35,7 +44,7 @@ function Jokes() {
     }
   };
 
-  // ✅ Get Random Joke
+  // Get Random Joke
   const handleRandom = async () => {
     setLoading(true);
     setError(null);
@@ -50,7 +59,7 @@ function Jokes() {
     }
   };
 
-  // ✅ Get Joke By ID
+  // Get Joke By ID
   const handleGetById = async () => {
     if (!jokeId.trim()) return;
 
@@ -69,47 +78,104 @@ function Jokes() {
     }
   };
 
-
   const handleLogout = () => {
-  logoutUser();
-  navigate("/login");   // or "/" depending on where your modal is
-};
+    logoutUser();
+    navigate("/login");
+  };
 
   const handleDelete = async (id) => {
+    // remove instantly from UI
+    const previousJokes = jokes;
+    setJokes((prev) => prev.filter((j) => j.id !== id));
+
     try {
       await deleteJoke(id);
+    } catch (err) {
+      //  rollback if API fails
+      setJokes(previousJokes);
+      alert(err.message);
+    }
+  };
 
-      // Remove joke from UI instantly
-      setJokes(jokes.filter((joke) => joke.id !== id));
+  // Add Joke
+  const handleAddJoke = async () => {
+    if (!newJoke.trim()) return;
+
+    const tempJoke = {
+      id: Date.now(),
+      content: newJoke,
+      author_name: localStorage.getItem("username"),
+    };
+
+    // instant UI update
+    setJokes((prev) => [...prev, tempJoke]);
+    setNewJoke("");
+
+    try {
+      const created = await addJoke(newJoke);
+
+      // replace temp joke with real one
+      setJokes((prev) => prev.map((j) => (j.id === tempJoke.id ? created : j)));
+    } catch (err) {
+      setError(err.message || "Failed to add joke");
+
+      // rollback
+      setJokes((prev) => prev.filter((j) => j.id !== tempJoke.id));
+    }
+  };
+
+  // edit joke
+  const handleEdit = (joke) => {
+    setEditingId(joke.id);
+    setEditText(joke.content);
+  };
+
+  const handleUpdate = async (id) => {
+    try {
+      const updated = await updateJoke(id, editText);
+
+      setJokes((prev) => prev.map((j) => (j.id === id ? updated : j)));
+
+      setEditingId(null);
     } catch (err) {
       alert(err.message);
     }
   };
 
-  // ✅ Add Joke
-  const handleAddJoke = async () => {
-    if (!newJoke.trim()) return;
+  // like button
+  const handleLike = async (id) => {
 
-    setLoading(true);
-    setError(null);
+  setActiveLikeId(id);
 
-    try {
-      const created = await addJoke(newJoke);
-      setJokes((prev) => [...prev, created]);
-      setNewJoke("");
-    } catch (err) {
-      setError(err.message || "Failed to add joke");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const newHearts = Array.from({ length: 6 }, (_, i) => ({
+    id: Date.now() + i,
+    left: Math.random() * 40 - 20
+  }));
+
+  setHearts(newHearts);
+
+  setTimeout(() => {
+    setHearts([]);
+    setActiveLikeId(null);
+  }, 900);
+
+  try {
+
+    const updated = await likeJoke(id);
+
+    setJokes((prev) =>
+      prev.map((j) => (j.id === id ? updated : j))
+    );
+
+  } catch (err) {
+    alert(err.message);
+  }
+};
 
   return (
     <div className="page-bg">
-      <TopNav/>
+      <TopNav />
       <h1 className="welcome-text">Welcome to Jokes App 🎉</h1>
-
-      
 
       {/* <button onClick={handleLogout} className="logout-btn">
        Logout
@@ -151,25 +217,69 @@ function Jokes() {
         {error && <p className="error">{error}</p>}
 
         {/* Empty State */}
-        {!loading && jokes.length === 0 && <p>No jokes found 😅</p>}
+        {!loading && jokes.length === 0 && <p> Let's get some jokes 😅</p>}
 
         {/* Joke List */}
         <ul className="jokes-list">
           {jokes.map((j) => (
             <li key={j.id} className="joke-card">
-              <p>{j.content}</p>
+              {editingId === j.id ? (
+                <>
+                  <input
+                    value={editText}
+                    onChange={(e) => setEditText(e.target.value)}
+                  />
 
-              {j.author_name && <small>By: {j.author_name}</small>}
+                  <button onClick={() => handleUpdate(j.id)}>Save</button>
 
-              {/* Show delete button only for admin or joke owner */}
-              {(localStorage.getItem("role") === "admin" ||
-                localStorage.getItem("username") === j.author_email) && (
-                <button
-                  className="delete-btn"
-                  onClick={() => handleDelete(j.id)}
-                >
-                  Delete
-                </button>
+                  <button onClick={() => setEditingId(null)}>Cancel</button>
+                </>
+              ) : (
+                <>
+                  <p>{j.content}</p>
+
+                  {j.author_name && <small>By: {j.author_name}</small>}
+
+                  <div className="joke-actions">
+                    <div className="like-container">
+                      <button
+                        className="like-btn"
+                        onClick={() => handleLike(j.id)}
+                      >
+                        ❤️ {j.likes || 0}
+                      </button>
+
+                      {activeLikeId === j.id && hearts.map((h) => (
+                        <span
+                          key={h.id}
+                          className="floating-heart"
+                          style={{ left: `${h.left}px` }}
+                        >
+                          ❤️
+                        </span>
+                      ))}
+                    </div>
+
+                    {(localStorage.getItem("role") === "admin" ||
+                      localStorage.getItem("username") === j.author_email) && (
+                      <>
+                        <button
+                          className="edit-btn"
+                          onClick={() => handleEdit(j)}
+                        >
+                          Edit
+                        </button>
+
+                        <button
+                          className="delete-btn"
+                          onClick={() => handleDelete(j.id)}
+                        >
+                          Delete
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </>
               )}
             </li>
           ))}
