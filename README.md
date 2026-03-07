@@ -1,68 +1,263 @@
-# 😂 Jokes API – Full Stack Web Application
+# 😂 JokeBox – Full Stack Real-Time Joke Sharing App
 
-A full-stack web application where users can **register, log in, and share jokes**.  
-The project demonstrates **REST API development, authentication, PostgreSQL database integration, and full-stack deployment**.
+![React](https://img.shields.io/badge/Frontend-React-blue)
+![Vite](https://img.shields.io/badge/Bundler-Vite-purple)
+![Node](https://img.shields.io/badge/Backend-Node.js-green)
+![Express](https://img.shields.io/badge/Framework-Express-black)
+![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-blue)
+![Socket.IO](https://img.shields.io/badge/Realtime-Socket.IO-orange)
+![JWT](https://img.shields.io/badge/Auth-JWT-red)
+
+A **full-stack real-time web application** where users can **register, login, create jokes, edit them, like/unlike jokes, and see live updates instantly**.
+
+The project demonstrates:
+
+- REST API development
+- JWT authentication
+- PostgreSQL database design
+- Real-time updates using WebSockets
+- Secure backend practices
+- Full stack deployment
 
 ---
 
 # 🚀 Live Demo
 
-Frontend  
-https://jokesapp-red.vercel.app
+### 🌐 Frontend
+https://jokesapp26.vercel.app
 
-Backend API  
+### ⚡ Backend API
 https://jokesapi-24iv.onrender.com
+
+---
+
+# 🎥 Demo
+
+Add a short demo GIF here.
+
+Example:
+
+```markdown
+![Demo](demo.gif)
+```
+
+---
+
+# 🖼 Screenshots
+
+### Home Page
+
+```markdown
+![Home](screenshots/jokeall.png)
+```
+
+### Like System
+
+```markdown
+![Like](screenshots/jokelike.png)
+```
+### Joke Edit
+
+```markdown
+![Edit Joke](screenshots/jokeedit.png)
+```
+### Add Joke
+
+```markdown
+![Add Joke](screenshots/jokeadd.png)
+```
 
 ---
 
 # 📌 Features
 
-## 🔐 Authentication
+# 🔐 Authentication
+
 - User registration
 - User login
-- JWT-based authentication
-- Password hashing using bcrypt
+- JWT based authentication
+- Secure password hashing with **bcrypt**
+- Role-based authorization (admin / user)
 
-## 🤣 Joke Management
+---
+
+# 🤣 Joke Management
+
+Users can:
+
 - View all jokes
 - Fetch a random joke
 - View joke by ID
-- Add a new joke (authenticated users)
-- Delete jokes (author or admin only)
+- Add new jokes
+- Edit their own jokes
+- Delete jokes (author or admin)
 
-## 🛡 Security
-- Rate limiting to prevent API abuse
-- Protected routes with middleware
-- Secure password storage
+---
 
-## 🌐 Deployment
-- Frontend deployed on **Vercel**
-- Backend deployed on **Render**
-- PostgreSQL database hosted on **Render**
+# ✏️ Author-Only Edit Protection
+
+Only the **author of the joke** can edit it.
+
+Backend validation example:
+
+```javascript
+if (Number(joke.author_id) !== Number(req.user.id)) {
+  return res.status(403).json({ message: "Unauthorized" });
+}
+```
+
+Frontend also blocks unauthorized editing attempts.
+
+---
+
+# ❤️ Like / Unlike System
+
+Users can **like or unlike jokes**.
+
+Click again to remove the like.
+
+This prevents **spam liking**.
+
+---
+
+# 🗄 Likes Table (Prevents Duplicate Likes)
+
+```sql
+CREATE TABLE likes (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  joke_id INTEGER REFERENCES jokes(id) ON DELETE CASCADE,
+  UNIQUE(user_id, joke_id)
+);
+```
+
+This ensures a user can **like a joke only once**.
+
+---
+
+# ⚡ Real-Time Updates (WebSockets)
+
+The application uses **Socket.IO** to update like counts in real time.
+
+When a user likes a joke:
+
+1. Backend updates database
+2. Socket.IO emits event
+3. All connected clients receive the update instantly
+
+Example:
+
+```javascript
+const io = req.app.get("io");
+
+io.emit("likeUpdated", {
+  jokeId,
+  likes: updated.rows[0].likes
+});
+```
+
+---
+
+# 👥 Online Users Counter
+
+The app shows **how many users are currently online**.
+
+Example display:
+
+```
+👥 Online Users: 5
+```
+
+Backend socket logic:
+
+```javascript
+let onlineUsers = 0;
+
+io.on("connection", (socket) => {
+
+  onlineUsers++;
+
+  io.emit("onlineUsers", onlineUsers);
+
+  socket.on("disconnect", () => {
+    onlineUsers--;
+    io.emit("onlineUsers", onlineUsers);
+  });
+
+});
+```
+
+---
+
+# 🛡 Security
+
+Security measures implemented:
+
+- JWT authentication
+- Password hashing with bcrypt
+- Protected routes
+- Role-based access control
+- **API rate limiting**
+
+Example rate limiter:
+
+```javascript
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+});
+```
+
+---
+
+# 🏗 Architecture
+
+```
+Frontend (React + Vite)
+        │
+        │ HTTP / WebSocket
+        ▼
+Backend (Node.js + Express + Socket.IO)
+        │
+        │ SQL Queries
+        ▼
+PostgreSQL Database
+```
 
 ---
 
 # 🛠 Tech Stack
 
-### Frontend
+## Frontend
+
 - React
 - Vite
 - Axios
 - React Router
+- Socket.IO Client
 
-### Backend
+## Backend
+
 - Node.js
 - Express.js
-- JWT Authentication
+- JWT
 - bcrypt
+- Socket.IO
 - express-rate-limit
 
-### Database
+## Database
+
 - PostgreSQL
 
-### Deployment
-- Vercel (Frontend)
-- Render (Backend + Database)
+---
+
+# 🌐 Deployment
+
+| Service | Platform |
+|-------|------|
+| Frontend | Vercel |
+| Backend | Render |
+| Database | Render PostgreSQL |
 
 ---
 
@@ -81,6 +276,8 @@ CREATE TABLE users (
 );
 ```
 
+---
+
 ## Jokes Table
 
 ```sql
@@ -88,6 +285,7 @@ CREATE TABLE jokes (
   id SERIAL PRIMARY KEY,
   content TEXT NOT NULL,
   author_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  likes INTEGER DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 ```
@@ -123,9 +321,9 @@ npm install
 
 ---
 
-## 3️⃣ Environment Variables
+# 3️⃣ Environment Variables
 
-Create `.env` file inside the backend folder.
+Create `.env` inside **backend**.
 
 ```
 PORT=5000
@@ -139,7 +337,7 @@ DATABASE_URL=your_postgresql_connection_string
 
 ---
 
-## 4️⃣ Run Backend
+# 4️⃣ Run Backend
 
 ```bash
 cd backend
@@ -148,20 +346,20 @@ npm run dev
 
 ---
 
-## 5️⃣ Run Frontend
+# 5️⃣ Run Frontend
 
 ```bash
 cd frontend
 npm run dev
 ```
 
-Frontend will run on
+Frontend runs on:
 
 ```
 http://localhost:5173
 ```
 
-Backend will run on
+Backend runs on:
 
 ```
 http://localhost:5000
@@ -187,7 +385,7 @@ POST /api/auth/login
 
 ---
 
-## Jokes
+# Jokes API
 
 ### Get all jokes
 
@@ -207,37 +405,78 @@ GET /api/jokes/random
 GET /api/jokes/:id
 ```
 
-### Add joke (Protected)
+### Add joke
 
 ```
 POST /api/jokes
 ```
 
-### Delete joke (Protected)
+### Edit joke
+
+```
+PUT /api/jokes/:id
+```
+
+### Delete joke
 
 ```
 DELETE /api/jokes/:id
+```
+
+### Like / Unlike joke
+
+```
+POST /api/jokes/:id/like
+```
+
+---
+
+# 📂 Folder Structure
+
+```
+API
+│
+├── backend
+│   ├── config
+│   │   └── db.js
+│   ├── routes
+│   │   ├── authRoutes.js
+│   │   └── jokeRoutes.js
+│   ├── middleware
+│   │   └── authMiddleware.js
+│   └── index.js
+│
+├── frontend
+│   ├── components
+│   ├── pages
+│   ├── services
+│   ├── socket.js
+│   └── App.jsx
 ```
 
 ---
 
 # 🧠 What I Learned
 
+Through this project I learned:
+
 - Building REST APIs using Express
-- Implementing authentication with JWT
-- Secure password storage with bcrypt
-- PostgreSQL database design
-- Handling CORS in production
-- Deploying full stack apps using Render & Vercel
+- Implementing JWT authentication
+- PostgreSQL schema design
+- Real-time communication using WebSockets
+- Preventing duplicate likes using database constraints
+- Rate limiting APIs
+- Full stack deployment using Render & Vercel
 
 ---
 
 # 📌 Future Improvements
 
-- Add joke categories
-- Like / dislike jokes
-- Pagination for jokes
-- User profile pages
+- Prevent multiple likes across devices
+- Add comments to jokes
+- Trending jokes algorithm
+- Pagination
+- User profiles
 - Admin dashboard
 
 ---
@@ -251,4 +490,4 @@ https://github.com/UtkarshSuman
 
 ---
 
-⭐ If you like this project, feel free to **star the repository!**
+⭐ If you like this project, feel free to **star the repository**.
