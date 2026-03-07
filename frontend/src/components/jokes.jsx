@@ -1,4 +1,5 @@
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
+import socket from "../socket";
 import { useNavigate } from "react-router-dom";
 import {
   getAllJokes,
@@ -26,6 +27,26 @@ function Jokes() {
   const [likedId, setLikedId] = useState(null);
   const [hearts, setHearts] = useState([]);
   const [activeLikeId, setActiveLikeId] = useState(null);
+  
+
+  // socket listener code
+  useEffect(() => {
+
+  socket.on("likeUpdated", (data) => {
+
+    setJokes((prev) =>
+      prev.map((j) =>
+        j.id === data.jokeId
+          ? { ...j, likes: data.likes }
+          : j
+      )
+    );
+
+  });
+
+  return () => socket.off("likeUpdated");
+
+  }, []);
 
   const userId = localStorage.getItem("userId");
 
@@ -78,10 +99,6 @@ function Jokes() {
     }
   };
 
-  const handleLogout = () => {
-    logoutUser();
-    navigate("/login");
-  };
 
   const handleDelete = async (id) => {
     // remove instantly from UI
@@ -126,8 +143,17 @@ function Jokes() {
 
   // edit joke
   const handleEdit = (joke) => {
-    setEditingId(joke.id);
-    setEditText(joke.content);
+
+  const role = localStorage.getItem("role");
+  const username = localStorage.getItem("username");
+
+  if (role !== "admin" && username !== joke.author_email) {
+    alert("Only the author can edit this joke");
+    return;
+  }
+
+  setEditingId(joke.id);
+  setEditText(joke.content);
   };
 
   const handleUpdate = async (id) => {
@@ -145,32 +171,34 @@ function Jokes() {
   // like button
   const handleLike = async (id) => {
 
-  setActiveLikeId(id);
-
-  const newHearts = Array.from({ length: 6 }, (_, i) => ({
-    id: Date.now() + i,
-    left: Math.random() * 40 - 20
-  }));
-
-  setHearts(newHearts);
-
-  setTimeout(() => {
-    setHearts([]);
-    setActiveLikeId(null);
-  }, 900);
-
   try {
 
     const updated = await likeJoke(id);
 
+    // update UI
     setJokes((prev) =>
       prev.map((j) => (j.id === id ? updated : j))
     );
 
+    // trigger animation after success
+    setActiveLikeId(id);
+
+    const newHearts = Array.from({ length: 6 }, (_, i) => ({
+      id: Date.now() + i,
+      left: Math.random() * 40 - 20
+    }));
+
+    setHearts(newHearts);
+
+    setTimeout(() => {
+      setHearts([]);
+      setActiveLikeId(null);
+    }, 900);
+
   } catch (err) {
     alert(err.message);
   }
-};
+  };
 
   return (
     <div className="page-bg">

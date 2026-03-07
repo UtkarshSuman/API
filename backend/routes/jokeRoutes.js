@@ -195,35 +195,69 @@ router.put("/:id", protect, async (req, res) => {
 });
 
 router.post("/:id/like", protect, async (req, res) => {
-  console.log("helo");
-  if (!req.user) {
-  return res.status(401).json({ message: "User not authenticated" });
-}
 
   const jokeId = parseInt(req.params.id);
+  const userId = req.user.id;
 
   try {
 
-    const result = await pool.query(
-      `UPDATE jokes
-       SET likes = likes + 1
-       WHERE id = $1
-       RETURNING *`,
-      [jokeId]
+    const existing = await pool.query(
+      "SELECT * FROM likes WHERE user_id=$1 AND joke_id=$2",
+      [userId, jokeId]
     );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        message: "Joke not found"
-      });
+    let updated;
+
+    if (existing.rows.length > 0) {
+
+      // Unlike
+      await pool.query(
+        "DELETE FROM likes WHERE user_id=$1 AND joke_id=$2",
+        [userId, jokeId]
+      );
+
+      updated = await pool.query(
+        `UPDATE jokes
+         SET likes = likes - 1
+         WHERE id=$1
+         RETURNING *`,
+        [jokeId]
+      );
+
+    } else {
+
+      // Like
+      await pool.query(
+        "INSERT INTO likes(user_id, joke_id) VALUES($1,$2)",
+        [userId, jokeId]
+      );
+
+      updated = await pool.query(
+        `UPDATE jokes
+         SET likes = likes + 1
+         WHERE id=$1
+         RETURNING *`,
+        [jokeId]
+      );
+
     }
 
-    res.json(result.rows[0]);
+    // SOCKET EMIT HERE
+    const io = req.app.get("io");
+
+    io.emit("likeUpdated", {
+      jokeId,
+      likes: updated.rows[0].likes
+    });
+
+    res.json(updated.rows[0]);
 
   } catch (err) {
-  console.error("Edit joke error:", err);
-  res.status(500).json({ message: err.message });
-}
+
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+
+  }
 
 });
 

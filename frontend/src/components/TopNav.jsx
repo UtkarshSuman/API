@@ -1,8 +1,25 @@
 import React from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { logoutUser } from "../services/api";
+import socket from "../socket";
+
+
 export default function TopNav({ isLoggedIn, onLogin, onLogout }) {
+  
   const navigate = useNavigate();
+
+  const [onlineUsers, setOnlineUsers] = useState(0);
+
+  useEffect(() => {
+
+  socket.on("onlineUsers", (count) => {
+    setOnlineUsers(count);
+  });
+
+  return () => socket.off("onlineUsers");
+
+  }, []);
 
   const handleLogout = () => {
     logoutUser();
@@ -14,6 +31,7 @@ export default function TopNav({ isLoggedIn, onLogin, onLogout }) {
       <div className="brand">
         <span className="brand-dot" />
         JokeBox
+        <p>👥 Online Users: {onlineUsers}</p>
       </div>
 
       <div className="auth-group">

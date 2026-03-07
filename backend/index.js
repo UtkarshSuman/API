@@ -1,3 +1,5 @@
+import { Server } from "socket.io";
+import http from "http";
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -10,6 +12,43 @@ import authRoutes from "./routes/authRoutes.js";
 import jokeRoutes from "./routes/jokeRoutes.js";
 
 const app = express();
+
+
+// Create HTTP server for socket
+const server = http.createServer(app);
+
+// Socket.IO setup
+const io = new Server(server, {
+  cors: {
+    origin: [
+      "http://localhost:5173",
+      /\.vercel\.app$/,
+    ],
+    methods: ["GET", "POST"],
+  },
+});
+
+// store io globally
+app.set("io", io);
+
+// online users counter
+let onlineUsers = 0;
+
+io.on("connection", (socket) => {
+
+  console.log("User connected");
+
+  onlineUsers++;
+  io.emit("onlineUsers", onlineUsers);
+
+  socket.on("disconnect", () => {
+    console.log("User disconnected");
+
+    onlineUsers--;
+    io.emit("onlineUsers", onlineUsers);
+  });
+
+});
 
 // CORS
 app.use(
@@ -49,7 +88,7 @@ pool.query("SELECT NOW()")
   .then(() => {
     console.log("Database connected");
 
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
   })
