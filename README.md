@@ -31,15 +31,15 @@ https://jokesapi-24iv.onrender.com
 
 ---
 
-# 🎥 Demo
+<!-- # 🎥 Demo
 
 Add a short demo GIF here.
 
 Example:
 
-```markdown
-![Demo](demo.gif)
-```
+
+![Demo](demo.gif) -->
+
 
 ---
 
@@ -47,25 +47,25 @@ Example:
 
 ### Home Page
 
-```markdown
+
 ![Home](screenshots/jokeall.png)
-```
+
 
 ### Like System
 
-```markdown
+
 ![Like](screenshots/jokelike.png)
-```
+
 ### Joke Edit
 
-```markdown
+
 ![Edit Joke](screenshots/jokeedit.png)
-```
+
 ### Add Joke
 
-```markdown
+
 ![Add Joke](screenshots/jokeadd.png)
-```
+
 
 ---
 
