@@ -41,6 +41,10 @@ io.on("connection", (socket) => {
   onlineUsers++;
   io.emit("onlineUsers", onlineUsers);
 
+  socket.on("joinJokeRoom", (jokeId) => {
+    socket.join(`joke_${jokeId}`);
+  });
+  
   socket.on("disconnect", () => {
     console.log("User disconnected");
 
@@ -48,7 +52,26 @@ io.on("connection", (socket) => {
     io.emit("onlineUsers", onlineUsers);
   });
 
+  socket.on("joinJokeRoom", (jokeId) => {
+  socket.join(`joke_${jokeId}`);
+  });
+
 });
+
+// BETTER TO COUNT DYNAMICALLY AS WHEN SERVER RESTARTS,THE COUNT RESETS
+
+// io.on("connection", (socket) => {
+
+//   const users = io.engine.clientsCount;
+
+//   io.emit("onlineUsers", users);
+
+//   socket.on("disconnect", () => {
+//     io.emit("onlineUsers", io.engine.clientsCount);
+//   });
+
+// });
+
 
 // CORS
 app.use(

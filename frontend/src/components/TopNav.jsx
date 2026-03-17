@@ -12,7 +12,9 @@ export default function TopNav({ isLoggedIn, onLogin, onLogout }) {
   const [onlineUsers, setOnlineUsers] = useState(0);
 
   useEffect(() => {
-
+   
+  socket.connect();
+  
   socket.on("onlineUsers", (count) => {
     setOnlineUsers(count);
   });

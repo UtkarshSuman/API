@@ -117,4 +117,34 @@ export const likeJoke = async (id) => {
   return data;
 };
 
+
+export const getCommentsByJoke = async (jokeId) => {
+  const res = await fetch(`/api/jokes/${jokeId}/comments`);
+
+  if (!res.ok) {
+    throw new Error("Failed to load comments");
+  }
+
+  return res.json();
+};
+
+export const addComment = async (jokeId, comment, token) => {
+
+  const res = await fetch(`/api/jokes/${jokeId}/comments`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({ comment })
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to add comment");
+  }
+
+  return res.json();
+};
+
+
 export default api;

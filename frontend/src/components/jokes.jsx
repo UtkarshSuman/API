@@ -12,7 +12,7 @@ import {
   logoutUser,
 } from "../services/api.js";
 import TopNav from "./TopNav.jsx";
-
+import CommentSection from "./CommentSection.jsx";
 
 function Jokes() {
   const navigate = useNavigate();
@@ -27,25 +27,19 @@ function Jokes() {
   const [likedId, setLikedId] = useState(null);
   const [hearts, setHearts] = useState([]);
   const [activeLikeId, setActiveLikeId] = useState(null);
-  
+  const [openComments, setOpenComments] = useState(null);
 
   // socket listener code
   useEffect(() => {
+    socket.on("likeUpdated", (data) => {
+      setJokes((prev) =>
+        prev.map((j) =>
+          j.id === data.jokeId ? { ...j, likes: data.likes } : j,
+        ),
+      );
+    });
 
-  socket.on("likeUpdated", (data) => {
-
-    setJokes((prev) =>
-      prev.map((j) =>
-        j.id === data.jokeId
-          ? { ...j, likes: data.likes }
-          : j
-      )
-    );
-
-  });
-
-  return () => socket.off("likeUpdated");
-
+    return () => socket.off("likeUpdated");
   }, []);
 
   const userId = localStorage.getItem("userId");
@@ -99,7 +93,6 @@ function Jokes() {
     }
   };
 
-
   const handleDelete = async (id) => {
     // remove instantly from UI
     const previousJokes = jokes;
@@ -143,17 +136,16 @@ function Jokes() {
 
   // edit joke
   const handleEdit = (joke) => {
+    const role = localStorage.getItem("role");
+    const username = localStorage.getItem("username");
 
-  const role = localStorage.getItem("role");
-  const username = localStorage.getItem("username");
+    if (role !== "admin" && username !== joke.author_email) {
+      alert("Only the author can edit this joke");
+      return;
+    }
 
-  if (role !== "admin" && username !== joke.author_email) {
-    alert("Only the author can edit this joke");
-    return;
-  }
-
-  setEditingId(joke.id);
-  setEditText(joke.content);
+    setEditingId(joke.id);
+    setEditText(joke.content);
   };
 
   const handleUpdate = async (id) => {
@@ -170,34 +162,29 @@ function Jokes() {
 
   // like button
   const handleLike = async (id) => {
+    try {
+      const updated = await likeJoke(id);
 
-  try {
+      // update UI
+      setJokes((prev) => prev.map((j) => (j.id === id ? updated : j)));
 
-    const updated = await likeJoke(id);
+      // trigger animation after success
+      setActiveLikeId(id);
 
-    // update UI
-    setJokes((prev) =>
-      prev.map((j) => (j.id === id ? updated : j))
-    );
+      const newHearts = Array.from({ length: 6 }, (_, i) => ({
+        id: Date.now() + i,
+        left: Math.random() * 40 - 20,
+      }));
 
-    // trigger animation after success
-    setActiveLikeId(id);
+      setHearts(newHearts);
 
-    const newHearts = Array.from({ length: 6 }, (_, i) => ({
-      id: Date.now() + i,
-      left: Math.random() * 40 - 20
-    }));
-
-    setHearts(newHearts);
-
-    setTimeout(() => {
-      setHearts([]);
-      setActiveLikeId(null);
-    }, 900);
-
-  } catch (err) {
-    alert(err.message);
-  }
+      setTimeout(() => {
+        setHearts([]);
+        setActiveLikeId(null);
+      }, 900);
+    } catch (err) {
+      alert(err.message);
+    }
   };
 
   return (
@@ -277,16 +264,27 @@ function Jokes() {
                         ❤️ {j.likes || 0}
                       </button>
 
-                      {activeLikeId === j.id && hearts.map((h) => (
-                        <span
-                          key={h.id}
-                          className="floating-heart"
-                          style={{ left: `${h.left}px` }}
-                        >
-                          ❤️
-                        </span>
-                      ))}
+                      {activeLikeId === j.id &&
+                        hearts.map((h) => (
+                          <span
+                            key={h.id}
+                            className="floating-heart"
+                            style={{ left: `${h.left}px` }}
+                          >
+                            ❤️
+                          </span>
+                        ))}
                     </div>
+
+                    {/* 💬 COMMENT BUTTON */}
+                    <button onClick={() => setOpenComments(openComments === j.id ? null : j.id)}>💬</button>
+
+                    {openComments === j.id && (
+                      <CommentSection
+                        jokeId={j.id}
+                        token={localStorage.getItem("token")}
+                      />
+                    )}
 
                     {(localStorage.getItem("role") === "admin" ||
                       localStorage.getItem("username") === j.author_email) && (
@@ -318,3 +316,12 @@ function Jokes() {
 }
 
 export default Jokes;
+
+{
+  /* <button onClick={() => setOpenComments(joke.id)}>
+💬 Comment
+</button>
+{openComments === joke.id && (
+  <CommentSection jokeId={joke.id} token={token} />
+)} */
+}

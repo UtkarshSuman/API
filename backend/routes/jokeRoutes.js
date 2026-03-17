@@ -146,6 +146,7 @@ if (isNaN(id)) {
   }
 });
 
+
 router.put("/:id", protect, async (req, res) => {
   const jokeId = req.params.id;
   const { content } = req.body;
@@ -260,5 +261,45 @@ router.post("/:id/like", protect, async (req, res) => {
   }
 
 });
+
+// database scema to load joke faster ->>>>>>>>>>>>>>>>>>>>    CREATE INDEX idx_comments_joke_id ON comments(joke_id);
+router.get("/jokes/:id/comments", async (req, res) => {
+
+  const jokeId = req.params.id;
+
+  const comments = await pool.query(
+    `SELECT comments.*, users.username
+     FROM comments
+     JOIN users ON comments.user_id = users.id
+     WHERE joke_id=$1
+     ORDER BY created_at ASC`,
+    [jokeId]
+  );
+
+  res.json(comments.rows);
+});
+
+
+router.post("/jokes/:id/comments", protect, async (req, res) => {
+
+  const jokeId = req.params.id;
+  const userId = req.user.id;
+  const { comment } = req.body;
+
+  const newComment = await pool.query(
+    `INSERT INTO comments (joke_id, user_id, comment)
+     VALUES ($1,$2,$3)
+     RETURNING *`,
+    [jokeId, userId, comment]
+  );
+
+  io.to(`joke_${jokeId}`).emit("newComment", {
+  jokeId,
+  comment: newComment.rows[0]
+  });
+
+  res.json(newComment.rows[0]);
+});
+
 
 export default router;
