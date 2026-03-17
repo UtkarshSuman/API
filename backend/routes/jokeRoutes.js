@@ -264,44 +264,52 @@ router.post("/:id/like", protect, async (req, res) => {
 
 // database scema to load joke faster ->>>>>>>>>>>>>>>>>>>>    CREATE INDEX idx_comments_joke_id ON comments(joke_id);
 router.get("/:id/comments", async (req, res) => {
+  try {
+    const jokeId = req.params.id;
 
-  const jokeId = req.params.id;
+    const comments = await pool.query(
+      `SELECT comments.*, users.name AS username
+       FROM comments
+       JOIN users ON comments.user_id = users.id
+       WHERE joke_id=$1
+       ORDER BY created_at ASC`,
+      [jokeId]
+    );
 
-  const comments = await pool.query(
-    `SELECT comments.*, users.username
-     FROM comments
-     JOIN users ON comments.user_id = users.id
-     WHERE joke_id=$1
-     ORDER BY created_at ASC`,
-    [jokeId]
-  );
+    res.json(comments.rows);
 
-  res.json(comments.rows);
+  } catch (err) {
+    console.error("Comments error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
 });
-
 
 router.post("/:id/comments", protect, async (req, res) => {
+  try {
+    const jokeId = req.params.id;
+    const userId = req.user.id;
+    const { comment } = req.body;
 
-  const jokeId = req.params.id;
-  const userId = req.user.id;
-  const { comment } = req.body;
+    const newComment = await pool.query(
+      `INSERT INTO comments (joke_id, user_id, comment)
+       VALUES ($1,$2,$3)
+       RETURNING *`,
+      [jokeId, userId, comment]
+    );
 
-  const newComment = await pool.query(
-    `INSERT INTO comments (joke_id, user_id, comment)
-     VALUES ($1,$2,$3)
-     RETURNING *`,
-    [jokeId, userId, comment]
-  );
+    const io = req.app.get("io");
 
-  const io = req.app.get("io");
+    io.to(`joke_${jokeId}`).emit("newComment", {
+      jokeId,
+      comment: newComment.rows[0]
+    });
 
-  io.to(`joke_${jokeId}`).emit("newComment", {
-  jokeId,
-  comment: newComment.rows[0]
-  });
+    res.json(newComment.rows[0]);
 
-  res.json(newComment.rows[0]);
+  } catch (err) {
+    console.error("Add comment error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
 });
-
 
 export default router;
