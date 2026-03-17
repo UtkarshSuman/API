@@ -263,7 +263,7 @@ router.post("/:id/like", protect, async (req, res) => {
 });
 
 // database scema to load joke faster ->>>>>>>>>>>>>>>>>>>>    CREATE INDEX idx_comments_joke_id ON comments(joke_id);
-router.get("/jokes/:id/comments", async (req, res) => {
+router.get("/:id/comments", async (req, res) => {
 
   const jokeId = req.params.id;
 
@@ -280,7 +280,7 @@ router.get("/jokes/:id/comments", async (req, res) => {
 });
 
 
-router.post("/jokes/:id/comments", protect, async (req, res) => {
+router.post("/:id/comments", protect, async (req, res) => {
 
   const jokeId = req.params.id;
   const userId = req.user.id;
@@ -292,6 +292,8 @@ router.post("/jokes/:id/comments", protect, async (req, res) => {
      RETURNING *`,
     [jokeId, userId, comment]
   );
+
+  const io = req.app.get("io");
 
   io.to(`joke_${jokeId}`).emit("newComment", {
   jokeId,
