@@ -3,48 +3,91 @@ import "./CommentSection.css";
 import { getCommentsByJoke, addComment } from "../services/api.js"
 import socket from "../socket";
 
-export default function CommentSection({ jokeId, token }) {
+export default function CommentSection({ jokeId, token, cachedComments, setCommentsMap }) {
   const [comments, setComments] = useState([]);
   const [comment, setComment] = useState("");
   const [loading, setLoading] = useState(false);
 
+
+  // loads comments with caching
   const handleLoadComments = async () => {
     try {
       setLoading(true);
       const data = await getCommentsByJoke(jokeId);
-      setComments(data);
+      
+      const safeData = Array.isArray(data) ? data : [];
+
+      setComments(safeData);
+
+      // Save to cache
+      setCommentsMap(prev => ({
+        ...prev,
+        [jokeId]: safeData
+      }));
+
     } catch (err) {
-      console.error(err);
+      console.error("Loading comments error",err);
+      setComment([]);
     } finally {
       setLoading(false);
     }
   };
 
   const handleSubmitComment = async () => {
-    console.log("handlesubmit is rubbing");
-    if (!comment.trim()) return;
+  if (!comment.trim()) return;
 
-    try {
-      await addComment(jokeId, comment, token);
-      setComment("");
-    } catch (err) {
-      console.error(err);
-    }
-  };
+  try {
+
+    setLoading(true);
+    const newComment = await addComment(jokeId, comment, token);
+
+    // for instant ui update
+    setComments(prev => [...prev, newComment]);
+
+    // this will Update cache also
+      setCommentsMap(prev => ({
+        ...prev,
+        [jokeId]: [...(prev[jokeId] || []), newComment]
+      }));
+
+    setComment("");
+  } catch (err) {
+    console.error("Add comment error:",err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
+  if (cachedComments) {
+    setComments(cachedComments); //to instantly load comments
+  } else {
     handleLoadComments();
+  }
 
-    socket.emit("joinJokeRoom", jokeId);
+  socket.emit("joinJokeRoom", jokeId);
 
-    socket.on("newComment", (data) => {
+  // Listen for new comments (NO DUPLICATES)
+    const handleNewComment = (data) => {
       if (data.jokeId === jokeId) {
-        setComments((prev) => [...prev, data.comment]);
-      }
-    });
+        setComments(prev => {
+          const exists = prev.some(c => c.id === data.comment.id);
+          if (exists) return prev;
+          return [...prev, data.comment];
+        });
 
-    return () => socket.off("newComment");
-  }, [jokeId]);
+        // update cache also
+        setCommentsMap(prev => ({
+          ...prev,
+          [jokeId]: [...(prev[jokeId] || []), data.comment]
+        }));
+      }
+    };
+
+    socket.on("newComment",handleNewComment);
+
+  return () => socket.off("newComment",handleNewComment);
+}, [jokeId]);
 
   return (
     <div className="comment-box">
@@ -53,10 +96,14 @@ export default function CommentSection({ jokeId, token }) {
       {loading && <p className="loading">Loading...</p>}
 
       <div className="comment-list">
+        {!loading && comments.length === 0 && (
+          <p className="empty">No comments yet!!</p>
+        )}
+
         {comments.map((c) => (
           <div key={c.id} className="comment-item">
-            <span className="comment-user">{c.username}</span>
-            <p className="comment-text">{c.comment}</p>
+            <div className="comment-user">{c.username}</div>
+            <div className="comment-text">{c.comment}</div>
           </div>
         ))}
       </div>
@@ -69,7 +116,7 @@ export default function CommentSection({ jokeId, token }) {
           onChange={(e) => setComment(e.target.value)}
         />
 
-        <button onClick={handleSubmitComment}>
+        <button onClick={handleSubmitComment} disabled={loading}>
           Post
         </button>
       </div>

@@ -163,6 +163,8 @@ button:active { transform: translateY(0); }
 }
 
 .joke-card {
+  display: flex;
+  flex-direction: column;
   background: var(--surface-2); padding: 15px 20px;
   border-radius: var(--r-input); font-size: 14.5px; line-height: 1.65;
   color: var(--text); border: 1px solid var(--border);

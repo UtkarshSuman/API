@@ -28,6 +28,7 @@ function Jokes() {
   const [hearts, setHearts] = useState([]);
   const [activeLikeId, setActiveLikeId] = useState(null);
   const [openComments, setOpenComments] = useState(null);
+  const [commentsMap, setCommentsMap] = useState({});
 
   // socket listener code
   useEffect(() => {
@@ -277,14 +278,13 @@ function Jokes() {
                     </div>
 
                     {/* 💬 COMMENT BUTTON */}
-                    <button onClick={() => setOpenComments(openComments === j.id ? null : j.id)}>💬</button>
-
-                    {openComments === j.id && (
-                      <CommentSection
-                        jokeId={j.id}
-                        token={localStorage.getItem("token")}
-                      />
-                    )}
+                    <button
+                      onClick={() =>
+                        setOpenComments(openComments === j.id ? null : j.id)
+                      }
+                    >
+                      💬
+                    </button>
 
                     {(localStorage.getItem("role") === "admin" ||
                       localStorage.getItem("username") === j.author_email) && (
@@ -305,6 +305,15 @@ function Jokes() {
                       </>
                     )}
                   </div>
+
+                  {openComments === j.id && (
+                    <CommentSection
+                      jokeId={j.id}
+                      token={localStorage.getItem("token")}
+                      cachedComments={commentsMap[j.id]}
+                      setCommentsMap={setCommentsMap}
+                    />
+                  )}
                 </>
               )}
             </li>

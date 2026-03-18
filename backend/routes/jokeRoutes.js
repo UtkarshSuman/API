@@ -297,14 +297,22 @@ router.post("/:id/comments", protect, async (req, res) => {
       [jokeId, userId, comment]
     );
 
+    const fullComment = await pool.query(
+      `SELECT comments.*, users.name AS username
+       FROM comments
+       JOIN users ON comments.user_id = users.id
+       WHERE comments.id = $1`,
+      [newComment.rows[0].id]
+    );
+
     const io = req.app.get("io");
 
     io.to(`joke_${jokeId}`).emit("newComment", {
       jokeId,
-      comment: newComment.rows[0]
+      comment: fullComment.rows[0]
     });
 
-    res.json(newComment.rows[0]);
+    res.json(fullComment.rows[0]);
 
   } catch (err) {
     console.error("Add comment error:", err);

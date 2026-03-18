@@ -119,31 +119,15 @@ export const likeJoke = async (id) => {
 
 
 export const getCommentsByJoke = async (jokeId) => {
-  const res = await fetch(`/api/jokes/${jokeId}/comments`);
-
-  if (!res.ok) {
-    throw new Error("Failed to load comments");
-  }
-
-  return res.json();
+  const { data } = await api.get(`/api/jokes/${jokeId}/comments`);
+  return data;
 };
 
-export const addComment = async (jokeId, comment, token) => {
-
-  const res = await fetch(`/api/jokes/${jokeId}/comments`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`
-    },
-    body: JSON.stringify({ comment })
+export const addComment = async (jokeId, comment) => {
+  const { data } = await api.post(`/api/jokes/${jokeId}/comments`, {
+    comment,
   });
-
-  if (!res.ok) {
-    throw new Error("Failed to add comment");
-  }
-
-  return res.json();
+  return data;
 };
 
 
