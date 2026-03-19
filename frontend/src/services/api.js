@@ -130,5 +130,9 @@ export const addComment = async (jokeId, comment) => {
   return data;
 };
 
+export const getTrendingJokes = async () => {
+  const { data } = await api.get("/api/jokes/trending");
+  return data;
+};
 
 export default api;

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./AuthModal.css";
 import { loginUser, registerUser } from "../services/api"; 
+import { getAllJokes } from "../services/api";
 
 export default function AuthModal() {
   const [isLogin, setIsLogin] = useState(true);
@@ -21,6 +22,10 @@ export default function AuthModal() {
       if (isLogin) {
         
         await loginUser(username, password); // Role isn't needed for login, the DB already knows it
+
+        // efdsfed
+        await getAllJokes();
+
         navigate("/");
       } else {
         

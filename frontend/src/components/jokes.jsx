@@ -29,6 +29,7 @@ function Jokes() {
   const [activeLikeId, setActiveLikeId] = useState(null);
   const [openComments, setOpenComments] = useState(null);
   const [commentsMap, setCommentsMap] = useState({});
+  const [mode, setMode] = useState("latest");
 
   // socket listener code
   useEffect(() => {
@@ -188,6 +189,43 @@ function Jokes() {
     }
   };
 
+  const handleTrending = async () => {
+    try{
+      setMode("trending");  
+
+      const trending = await getTrendingJokes();
+
+      setJokes(trending);
+
+    } catch(err){
+      alert(err.message);
+    }
+  };
+
+  //if required one button with dual function 
+  const handleToggleFeed = async () => {
+  try {
+    setLoading(true);
+
+    if (mode === "latest") {
+      // switch to trending
+      const trending = await getTrendingJokes();
+      setJokes(trending);
+      setMode("trending");
+    } else {
+      //switch back to latest
+      const latest = await getAllJokes();
+      setJokes(latest);
+      setMode("latest");
+    }
+
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    setLoading(false);
+  }
+};
+
   return (
     <div className="page-bg">
       <TopNav />
@@ -205,6 +243,7 @@ function Jokes() {
 
         <div className="button-group">
           <button onClick={handleGetAll}>Get All Jokes</button>
+          <button onClick={handleTrending}>Trending Jokes</button>
           <button onClick={handleRandom}>Random Joke</button>
         </div>
 

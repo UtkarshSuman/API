@@ -90,23 +90,23 @@ export default function CommentSection({ jokeId, token, cachedComments, setComme
 }, [jokeId]);
 
   return (
-    <div className="comment-box">
-      <h4 className="comment-title">Comments</h4>
+     <div className="comment-box">
+    <h4 className="comment-title">Comments</h4>
 
-      {loading && <p className="loading">Loading...</p>}
-
-      <div className="comment-list">
-        {!loading && comments.length === 0 && (
-          <p className="empty">No comments yet!!</p>
-        )}
-
-        {comments.map((c) => (
+    <div className="comment-list">
+      {loading ? (
+        <p className="loading">Loading...</p>
+      ) : comments.length === 0 ? (
+        <p className="empty">No comments yet!!</p>
+      ) : (
+        comments.map((c) => (
           <div key={c.id} className="comment-item">
             <div className="comment-user">{c.username}</div>
             <div className="comment-text">{c.comment}</div>
           </div>
-        ))}
-      </div>
+        ))
+      )}
+    </div>
 
       <div className="comment-input-box">
         <input
@@ -114,6 +114,9 @@ export default function CommentSection({ jokeId, token, cachedComments, setComme
           placeholder="Write a comment..."
           value={comment}
           onChange={(e) => setComment(e.target.value)}
+          onKeyDown={(e) => {
+          if (e.key === "Enter") handleSubmitComment(); //for nice UX
+        }}
         />
 
         <button onClick={handleSubmitComment} disabled={loading}>

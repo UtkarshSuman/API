@@ -115,6 +115,13 @@
   margin-bottom: 10px;
 }
 
+.empty {
+  color: #888;
+  font-size: 14px;
+  text-align: center;
+  padding: 12px;
+}
+
 /* Animation */
 @keyframes fadeIn {
   from {
