@@ -3,6 +3,7 @@ import socket from "../socket";
 import { useNavigate } from "react-router-dom";
 import {
   getAllJokes,
+  getTrendingJokes,
   getRandomJoke,
   getJokeById,
   addJoke,

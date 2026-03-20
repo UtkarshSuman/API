@@ -55,6 +55,24 @@ router.get("/random", async (req, res) => {
   }
 });
 
+
+router.get("/jokes/trending", async (req, res) => {
+  const result = await pool.query(`
+    SELECT j.*,
+           (j.likes * 2 + COUNT(c.id) * 3) /
+           (EXTRACT(EPOCH FROM (NOW() - j.created_at)) / 3600 + 2)
+           AS score
+    FROM jokes j
+    LEFT JOIN comments c ON j.id = c.joke_id
+    GROUP BY j.id
+    ORDER BY score DESC
+    LIMIT 20;
+  `);
+
+  res.json(result.rows);
+});
+
+
 // ================= GET JOKE BY ID =================
 router.get("/:id", async (req, res) => {
   const id = parseInt(req.params.id);
@@ -321,20 +339,5 @@ router.post("/:id/comments", protect, async (req, res) => {
 });
 
 
-router.get("/jokes/trending", async (req, res) => {
-  const result = await pool.query(`
-    SELECT j.*,
-           (j.likes * 2 + COUNT(c.id) * 3) /
-           (EXTRACT(EPOCH FROM (NOW() - j.created_at)) / 3600 + 2)
-           AS score
-    FROM jokes j
-    LEFT JOIN comments c ON j.id = c.joke_id
-    GROUP BY j.id
-    ORDER BY score DESC
-    LIMIT 20;
-  `);
-
-  res.json(result.rows);
-});
 
 export default router;
