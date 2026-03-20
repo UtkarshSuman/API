@@ -56,7 +56,7 @@ router.get("/random", async (req, res) => {
 });
 
 
-router.get("/jokes/trending", async (req, res) => {
+router.get("/trending", async (req, res) => {
   const result = await pool.query(`
     SELECT j.*,
            (j.likes * 2 + COUNT(c.id) * 3) /
