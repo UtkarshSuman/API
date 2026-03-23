@@ -82,10 +82,11 @@ export const deleteJoke = async (id) => {
 
 // ================= JOKE SERVICES =================
 
-export const getAllJokes = async () => {
-  const { data } = await api.get("/api/jokes");
+export const getAllJokes = async (page = 1, limit = 10) => {
+  const { data } = await api.get(`/api/jokes?page=${page}&limit=${limit}`);
   return data;
 };
+
 
 export const getRandomJoke = async () => {
   const { data } = await api.get("/api/jokes/random");

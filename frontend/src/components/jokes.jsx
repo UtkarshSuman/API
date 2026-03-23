@@ -31,20 +31,29 @@ function Jokes() {
   const [openComments, setOpenComments] = useState(null);
   const [commentsMap, setCommentsMap] = useState({});
   const [mode, setMode] = useState("latest");
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+
 
   // socket listener code
-  useEffect(() => {
-    socket.on("likeUpdated", (data) => {
-      setJokes((prev) =>
-        prev.map((j) =>
-          j.id === data.jokeId ? { ...j, likes: data.likes } : j,
-        ),
-      );
+useEffect(() => {
+  const handleLikeUpdate = (data) => {
+    setJokes((prev) => {
+      return prev.map((j) => {
+        if (j.id === data.jokeId) {
+          return { ...j, likes: data.likes };
+        }
+        return j;
+      });
     });
+  };
 
-    return () => socket.off("likeUpdated");
-  }, []);
+  socket.on("likeUpdated", handleLikeUpdate);
 
+  return () => {
+    socket.off("likeUpdated", handleLikeUpdate);
+  };
+}, []);
   const userId = localStorage.getItem("userId");
 
   // Get All Jokes

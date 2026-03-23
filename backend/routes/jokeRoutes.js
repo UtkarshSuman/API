@@ -6,8 +6,14 @@ const router = express.Router();
 
 
 // ================= GET ALL JOKES =================
+
 router.get("/", async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+
+    const offset = (page - 1) * limit;
+
     const result = await pool.query(
       `SELECT jokes.id,
               jokes.content,
@@ -17,17 +23,23 @@ router.get("/", async (req, res) => {
               users.email AS author_email
        FROM jokes
        JOIN users ON jokes.author_id = users.id
-       ORDER BY jokes.created_at DESC`
+       ORDER BY jokes.created_at DESC
+       LIMIT $1 OFFSET $2`,
+      [limit, offset]
     );
 
-    res.json(result.rows);
+    res.json({
+      page,
+      limit,
+      jokes: result.rows,
+      hasMore: result.rows.length === limit  //  important
+    });
 
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });
   }
 });
-
 
 // ================= GET RANDOM JOKE =================
 router.get("/random", async (req, res) => {
@@ -55,21 +67,32 @@ router.get("/random", async (req, res) => {
   }
 });
 
-
 router.get("/trending", async (req, res) => {
-  const result = await pool.query(`
-    SELECT j.*,
-           (j.likes * 2 + COUNT(c.id) * 3) /
-           (EXTRACT(EPOCH FROM (NOW() - j.created_at)) / 3600 + 2)
-           AS score
-    FROM jokes j
-    LEFT JOIN comments c ON j.id = c.joke_id
-    GROUP BY j.id
-    ORDER BY score DESC
-    LIMIT 20;
-  `);
+  try {
+    const result = await pool.query(`
+      SELECT 
+        j.id,
+        j.content,
+        j.created_at,
+        j.likes,
+        u.name AS author_name,
+        u.email AS author_email,
+        (j.likes * 2 + COUNT(c.id) * 3) /
+        (EXTRACT(EPOCH FROM (NOW() - j.created_at)) / 3600 + 2)
+        AS score
+      FROM jokes j
+      JOIN users u ON j.author_id = u.id   
+      LEFT JOIN comments c ON j.id = c.joke_id
+      GROUP BY j.id, u.name, u.email      
+      ORDER BY score DESC
+      LIMIT 20;
+    `);
 
-  res.json(result.rows);
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Trending error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
 });
 
 
@@ -214,71 +237,67 @@ router.put("/:id", protect, async (req, res) => {
 });
 
 router.post("/:id/like", protect, async (req, res) => {
-
   const jokeId = parseInt(req.params.id);
   const userId = req.user.id;
 
   try {
-
     const existing = await pool.query(
       "SELECT * FROM likes WHERE user_id=$1 AND joke_id=$2",
       [userId, jokeId]
     );
 
-    let updated;
-
     if (existing.rows.length > 0) {
-
-      // Unlike
       await pool.query(
         "DELETE FROM likes WHERE user_id=$1 AND joke_id=$2",
         [userId, jokeId]
       );
 
-      updated = await pool.query(
-        `UPDATE jokes
-         SET likes = likes - 1
-         WHERE id=$1
-         RETURNING *`,
+      await pool.query(
+        "UPDATE jokes SET likes = likes - 1 WHERE id=$1",
         [jokeId]
       );
-
     } else {
-
-      // Like
       await pool.query(
         "INSERT INTO likes(user_id, joke_id) VALUES($1,$2)",
         [userId, jokeId]
       );
-
-      updated = await pool.query(
-        `UPDATE jokes
-         SET likes = likes + 1
-         WHERE id=$1
-         RETURNING *`,
+      
+      await pool.query(
+        "UPDATE jokes SET likes = likes + 1 WHERE id=$1",
         [jokeId]
       );
-
     }
 
-    // SOCKET EMIT HERE
+    //Fetch full updated joke
+    const fullJoke = await pool.query(
+      `SELECT j.id,
+              j.content,
+              j.created_at,
+              j.likes,
+              u.name AS author_name,
+              u.email AS author_email
+       FROM jokes j
+       JOIN users u ON j.author_id = u.id
+       WHERE j.id = $1`,
+      [jokeId]
+    );
+    
+    // socket emits here
     const io = req.app.get("io");
 
     io.emit("likeUpdated", {
       jokeId,
-      likes: updated.rows[0].likes
+      likes: fullJoke.rows[0].likes
     });
 
-    res.json(updated.rows[0]);
+    res.json(fullJoke.rows[0]);
 
   } catch (err) {
-
     console.error(err);
     res.status(500).json({ message: "Server error" });
-
   }
-
 });
+
 
 // database scema to load joke faster ->>>>>>>>>>>>>>>>>>>>    CREATE INDEX idx_comments_joke_id ON comments(joke_id);
 router.get("/:id/comments", async (req, res) => {
