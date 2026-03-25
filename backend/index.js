@@ -31,17 +31,17 @@ const io = new Server(server, {
 // store io globally
 app.set("io", io);
 
-// track UNIQUE users
-let onlineUsers = new Set();
+// track unique users with connection count
+let onlineUsers = new Map(); // userId se number of connections
 
 io.on("connection", (socket) => {
-  console.log("User connected:", socket.id);
 
-  // user comes online (after login)
+  // user comes online
   socket.on("userOnline", (userId) => {
-    socket.userId = userId; // attach user to socket
+    socket.userId = userId;
 
-    onlineUsers.add(userId);
+    const count = onlineUsers.get(userId) || 0;
+    onlineUsers.set(userId, count + 1);
 
     io.emit("onlineUsers", onlineUsers.size);
   });
@@ -51,17 +51,23 @@ io.on("connection", (socket) => {
     socket.join(`joke_${jokeId}`);
   });
 
-  // handle disconnect
+  // disconnect
   socket.on("disconnect", () => {
     console.log("User disconnected:", socket.id);
 
     if (socket.userId) {
-      onlineUsers.delete(socket.userId);
+      const count = onlineUsers.get(socket.userId);
+
+      if (count <= 1) {
+        onlineUsers.delete(socket.userId);
+      } else {
+        onlineUsers.set(socket.userId, count - 1);
+      }
+
       io.emit("onlineUsers", onlineUsers.size);
     }
   });
 });
-
 
 // BETTER TO COUNT DYNAMICALLY AS WHEN SERVER RESTARTS,THE COUNT RESETS
 

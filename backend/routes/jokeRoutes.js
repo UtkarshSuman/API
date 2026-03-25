@@ -110,7 +110,7 @@ if (isNaN(id)) {
       `SELECT jokes.id,
               jokes.content,
               jokes.created_at,
-              jokes.like,
+              jokes.likes,
               users.name AS author_name,
               users.email AS author_email
        FROM jokes
