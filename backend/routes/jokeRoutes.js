@@ -1,6 +1,7 @@
 import express from "express";
 import pool from "../config/db.js";
 import protect from "../middleware/authMiddleware.js";
+import { transporter } from "../utils/mailer.js";
 
 const router = express.Router();
 
