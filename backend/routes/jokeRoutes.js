@@ -56,6 +56,8 @@ router.get("/random", async (req, res) => {
               COUNT(c.id)::int AS comments_count
        FROM jokes
        JOIN users ON jokes.author_id = users.id
+       LEFT JOIN comments c ON jokes.id = c.joke_id
+       GROUP BY jokes.id, users.name
        ORDER BY RANDOM()
        LIMIT 1`
     );
