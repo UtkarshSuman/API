@@ -57,7 +57,7 @@ router.get("/random", async (req, res) => {
        FROM jokes
        JOIN users ON jokes.author_id = users.id
        LEFT JOIN comments c ON jokes.id = c.joke_id
-       GROUP BY jokes.id, users.name
+       GROUP BY jokes.id, jokes.content, jokes.created_at, jokes.likes, users.name
        ORDER BY RANDOM()
        LIMIT 1`
     );
