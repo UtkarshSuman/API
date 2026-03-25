@@ -21,7 +21,7 @@ router.get("/", async (req, res) => {
               jokes.likes,
               users.name AS author_name,
               users.email AS author_email,
-              COUNT(c.id) AS comments_count
+              COUNT(c.id)::int AS comments_count
        FROM jokes
        JOIN users ON jokes.author_id = users.id
        LEFT JOIN comments c ON jokes.id = c.joke_id
@@ -52,7 +52,8 @@ router.get("/random", async (req, res) => {
               jokes.content,
               jokes.created_at,
               jokes.likes,
-              users.name AS author_name
+              users.name AS author_name,
+              COUNT(c.id)::int AS comments_count
        FROM jokes
        JOIN users ON jokes.author_id = users.id
        ORDER BY RANDOM()
@@ -81,7 +82,7 @@ router.get("/trending", async (req, res) => {
         j.likes,
         u.name AS author_name,
         u.email AS author_email,
-        COUNT(c.id) AS comments_count,
+        COUNT(c.id)::int AS comments_count,
         (j.likes * 2 + COUNT(c.id) * 3) /
         (EXTRACT(EPOCH FROM (NOW() - j.created_at)) / 3600 + 2)
         AS score
@@ -117,7 +118,7 @@ if (isNaN(id)) {
               jokes.likes,
               users.name AS author_name,
               users.email AS author_email,
-              COUNT(c.id) AS comments_count
+              COUNT(c.id)::int AS comments_count
        FROM jokes
        JOIN users ON jokes.author_id = users.id
        LEFT JOIN comments c ON jokes.id = c.joke_id
