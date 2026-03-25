@@ -20,9 +20,12 @@ router.get("/", async (req, res) => {
               jokes.created_at,
               jokes.likes,
               users.name AS author_name,
-              users.email AS author_email
+              users.email AS author_email,
+              COUNT(c.id) AS comments_count
        FROM jokes
        JOIN users ON jokes.author_id = users.id
+       LEFT JOIN comments c ON jokes.id = c.joke_id
+       GROUP BY jokes.id, users.name, users.email
        ORDER BY jokes.created_at DESC
        LIMIT $1 OFFSET $2`,
       [limit, offset]
@@ -78,6 +81,7 @@ router.get("/trending", async (req, res) => {
         j.likes,
         u.name AS author_name,
         u.email AS author_email,
+        COUNT(c.id) AS comments_count,
         (j.likes * 2 + COUNT(c.id) * 3) /
         (EXTRACT(EPOCH FROM (NOW() - j.created_at)) / 3600 + 2)
         AS score
@@ -112,10 +116,13 @@ if (isNaN(id)) {
               jokes.created_at,
               jokes.likes,
               users.name AS author_name,
-              users.email AS author_email
+              users.email AS author_email,
+              COUNT(c.id) AS comments_count
        FROM jokes
        JOIN users ON jokes.author_id = users.id
-       WHERE jokes.id = $1`,
+       LEFT JOIN comments c ON jokes.id = c.joke_id
+       WHERE jokes.id = $1
+       GROUP BY jokes.id, users.name, users.email;`,
       [id]
     );
 
@@ -357,7 +364,46 @@ router.post("/:id/comments", protect, async (req, res) => {
       [newComment.rows[0].id]
     );
 
+    // get joke author
+    const jokeOwner = await pool.query(
+      `SELECT u.email, u.name, j.content
+       FROM jokes j
+       JOIN users u ON j.author_id = u.id
+       WHERE j.id = $1`,
+      [jokeId]
+    );
+
+const author = jokeOwner.rows[0];
+
+// avoid sending email to self
+if (author.email !== req.user.email) {
+  await transporter.sendMail({
+    from: process.env.EMAIL_USER,
+    to: author.email,
+    subject: "New Comment on Your Joke 😂",
+    html: `
+      <h3>Hey ${author.name}!</h3>
+      <p>Someone commented on your joke:</p>
+      <blockquote>${author.content}</blockquote>
+      <p><b>Comment:</b> ${comment}</p>
+    `,
+  });
+}
     const io = req.app.get("io");
+
+    // get updated count
+    const countResult = await pool.query(
+       "SELECT COUNT(*) FROM comments WHERE joke_id = $1",
+      [jokeId]
+    );
+
+   const commentsCount = parseInt(countResult.rows[0].count);
+
+    // emit update
+    io.emit("commentCountUpdated", {
+      jokeId,
+      commentsCount,
+    });
 
     io.to(`joke_${jokeId}`).emit("newComment", {
       jokeId,
