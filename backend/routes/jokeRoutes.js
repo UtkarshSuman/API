@@ -48,6 +48,7 @@ router.get("/random", async (req, res) => {
       `SELECT jokes.id,
               jokes.content,
               jokes.created_at,
+              jokes.likes,
               users.name AS author_name
        FROM jokes
        JOIN users ON jokes.author_id = users.id
@@ -109,6 +110,7 @@ if (isNaN(id)) {
       `SELECT jokes.id,
               jokes.content,
               jokes.created_at,
+              jokes.like,
               users.name AS author_name,
               users.email AS author_email
        FROM jokes
@@ -145,8 +147,21 @@ router.post("/", protect, async (req, res) => {
       "INSERT INTO jokes (content, author_id) VALUES ($1, $2) RETURNING *",
       [content, req.user.id]
     );
+   
+    const fullJoke = await pool.query(
+   `SELECT j.id,
+          j.content,
+          j.created_at,
+          j.likes,
+          u.name AS author_name,
+          u.email AS author_email
+    FROM jokes j
+    JOIN users u ON j.author_id = u.id
+    WHERE j.id = $1`,
+  [result.rows[0].id]
+  );
 
-    res.status(201).json(result.rows[0]);
+    res.status(201).json(fullJoke.rows[0]);
 
   } catch (error) {
     console.error(error);
