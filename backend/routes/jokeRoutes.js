@@ -381,7 +381,7 @@ const author = jokeOwner.rows[0];
 
 // avoid sending email to self
 if (author.email !== req.user.email) {
-  await transporter.sendMail({
+    transporter.sendMail({
     from: process.env.EMAIL_USER,
     to: author.email,
     subject: "New Comment on Your Joke 😂",
