@@ -49,6 +49,11 @@ io.on("connection", (socket) => {
     socket.join(`joke_${jokeId}`);
   });
 
+  socket.on("userOffline", (userId) => {
+    onlineUsers.delete(userId);
+    io.emit("onlineUsers", onlineUsers.size);
+  });
+
   socket.on("disconnect", () => {
     if (socket.userId) {
       const count = onlineUsers.get(socket.userId);

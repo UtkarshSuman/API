@@ -377,21 +377,31 @@ router.post("/:id/comments", protect, async (req, res) => {
       [jokeId]
     );
 
-const author = jokeOwner.rows[0];
 
 // avoid sending email to self
+const author = jokeOwner.rows[0];
+
+console.log("Author:", author);
+console.log("User:", req.user);
+
 if (author.email !== req.user.email) {
-    transporter.sendMail({
-    from: process.env.EMAIL_USER,
-    to: author.email,
-    subject: "New Comment on Your Joke 😂",
-    html: `
-      <h3>Hey ${author.name}!</h3>
-      <p>Someone commented on your joke:</p>
-      <blockquote>${author.content}</blockquote>
-      <p><b>Comment:</b> ${comment}</p>
-    `,
-  });
+  try {
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: author.email,
+      subject: "New Comment on Your Joke 😂",
+      html: `
+        <h3>Hey ${author.name}!</h3>
+        <p>Someone commented on your joke:</p>
+        <blockquote>${author.content}</blockquote>
+        <p><b>Comment:</b> ${comment}</p>
+      `,
+    });
+
+    console.log("Email sent successfully");
+  } catch (err) {
+    console.error("Email error:", err);
+  }
 }
     const io = req.app.get("io");
 
