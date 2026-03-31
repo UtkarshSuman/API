@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import "./AuthModal.css";
 import { loginUser, registerUser } from "../services/api"; 
 import { getAllJokes } from "../services/api";
+import socket from "../socket";
 
 export default function AuthModal() {
   const [isLogin, setIsLogin] = useState(true);
@@ -14,30 +15,35 @@ export default function AuthModal() {
 
   const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError("");
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+  setError("");
 
-    try {
-      if (isLogin) {
-        
-        await loginUser(username, password); // Role isn't needed for login, the DB already knows it
+  try {
+    if (isLogin) {
 
-        // efdsfed
-        await getAllJokes();
+      const data = await loginUser(username, password);
 
-        navigate("/");
-      } else {
-        
-        await registerUser({ name, email: username, password, role }); 
-        
-        setIsLogin(true);
-        setError("Registration successful! Please log in.");
+      // ensure userId exists
+      const userId = data.id || localStorage.getItem("userId");
+
+      if (userId) {
+        socket.emit("userOnline", userId);
       }
-    } catch (err) {
-      setError(err.message);
+
+      navigate("/");
+
+    } else {
+
+      await registerUser({ name, email: username, password, role });
+
+      setIsLogin(true);
+      setError("Registration successful! Please log in.");
     }
-  };
+  } catch (err) {
+    setError(err.message);
+  }
+};
 
   const handleGuestMode = () => {
     navigate("/");

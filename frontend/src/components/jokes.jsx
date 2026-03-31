@@ -11,6 +11,7 @@ import {
   updateJoke,
   likeJoke,
   logoutUser,
+  normalizeJoke,
 } from "../services/api.js";
 import TopNav from "./TopNav.jsx";
 import CommentSection from "./CommentSection.jsx";
@@ -34,6 +35,101 @@ function Jokes() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
+  // load jokes effect
+useEffect(() => {
+  if (mode === "latest") {
+    fetchJokes();
+  }
+}, [page, mode]);
+
+useEffect(() => {
+  socket.connect();
+
+  return () => {
+    socket.disconnect();
+  };
+}, []);
+
+useEffect(() => {
+  const userId = localStorage.getItem("userId");
+
+  if (!userId) return;
+
+  const handleConnect = () => {
+    console.log("Socket connected:", socket.id);
+    socket.emit("userOnline", userId); // always runs after connect
+  };
+
+  socket.on("connect", handleConnect);
+
+  // if already connected
+  if (socket.connected) {
+    handleConnect();
+  }
+
+  return () => {
+    socket.off("connect", handleConnect);
+  };
+}, []);
+
+
+useEffect(() => {
+  const handleOnlineUsers = (count) => {
+    console.log("Online Users:", count);
+  };
+
+  socket.on("onlineUsers", handleOnlineUsers);
+
+  return () => {
+    socket.off("onlineUsers", handleOnlineUsers);
+  };
+}, []);
+
+useEffect(() => {
+  if (jokeId) {
+    socket.emit("joinJokeRoom", jokeId);
+  }
+}, [jokeId]);
+
+
+
+
+  // infinite scroll effect
+  useEffect(() => {
+  const handleScroll = () => {
+    if (
+  window.innerHeight + document.documentElement.scrollTop + 100 >=
+    document.documentElement.scrollHeight &&
+  hasMore &&
+  !loading
+) {
+  setPage(prev => prev + 1);
+}
+  };
+
+  window.addEventListener("scroll", handleScroll);
+
+  return () => window.removeEventListener("scroll", handleScroll);
+}, [hasMore, loading, mode]);
+
+
+useEffect(() => {
+  const handleCommentCount = (data) => {
+    setJokes(prev =>
+      prev.map(j =>
+        j.id === data.jokeId
+          ? { ...j, comments_count: data.commentsCount }
+          : j
+      )
+    );
+  };
+
+  socket.on("commentCountUpdated", handleCommentCount);
+
+  return () => socket.off("commentCountUpdated", handleCommentCount);
+}, []);
+
+
 
   // socket listener code
 useEffect(() => {
@@ -54,22 +150,88 @@ useEffect(() => {
     socket.off("likeUpdated", handleLikeUpdate);
   };
 }, []);
+
+
   const userId = localStorage.getItem("userId");
 
-  // Get All Jokes
-  const handleGetAll = async () => {
-    setLoading(true);
-    setError(null);
 
-    try {
-      const data = await getAllJokes();
-      setJokes(data);
-    } catch (err) {
-      setError(err.message || "Failed to fetch jokes");
-    } finally {
-      setLoading(false);
+  const loadJokes = async () => {
+  try {
+    setLoading(true);
+
+    if (mode === "latest") {
+      const res = await getAllJokes(page);
+
+      setJokes(prev => [...prev, ...res.jokes]);
+      setHasMore(res.hasMore);
+
+    } else {
+      // trending doesn't paginate
+      const trending = await getTrendingJokes();
+      setJokes(trending);
+      setHasMore(false);
     }
-  };
+
+  } catch (err) {
+    setError(err.message);
+  } finally {
+    setLoading(false);
+  }
+};
+
+
+const handleGetAll = async () => {
+  
+  try {
+    setMode("latest");
+    setLoading(true);
+
+    setJokes([]);
+    setPage(1);
+    setHasMore(true);
+
+    const data = await getAllJokes(1);
+
+    setJokes(data.jokes);
+    setHasMore(data.hasMore);
+
+  } catch (err) {
+    setError(err.message);
+  } finally {
+    setLoading(false);
+  }
+};
+
+  // Get All Jokes
+  const fetchJokes = async () => {
+  if (loading || !hasMore) return;
+
+  setLoading(true);
+  setError(null);
+
+  try {
+    const data = await getAllJokes(page);
+
+    // ensure it's always an array
+    const incoming = Array.isArray(data.jokes) ? data.jokes : [];
+
+    setJokes((prev) => {
+      const prevIds = new Set(prev.map((j) => j.id));
+
+      const filtered = incoming.filter((j) => !prevIds.has(j.id));
+
+      return [...prev, ...filtered];
+    });
+
+    setHasMore(data.hasMore ?? false);
+
+  } catch (err) {
+    setError(err.message || "Failed to fetch jokes");
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   // Get Random Joke
   const handleRandom = async () => {
@@ -88,7 +250,10 @@ useEffect(() => {
 
   // Get Joke By ID
   const handleGetById = async () => {
-    if (!jokeId.trim()) return;
+    if (!jokeId.trim() || isNaN(jokeId)) {
+    setError("Please enter a valid numeric ID");
+    return;
+  }
 
     setLoading(true);
     setError(null);
@@ -123,11 +288,13 @@ useEffect(() => {
   const handleAddJoke = async () => {
     if (!newJoke.trim()) return;
 
-    const tempJoke = {
+    const tempJoke = normalizeJoke({
       id: Date.now(),
       content: newJoke,
-      author_name: localStorage.getItem("username"),
-    };
+      author_name: localStorage.getItem("name") || "You",
+      comments_count: 0, 
+      likes: 0 
+    });
 
     // instant UI update
     setJokes((prev) => [...prev, tempJoke]);
@@ -137,7 +304,7 @@ useEffect(() => {
       const created = await addJoke(newJoke);
 
       // replace temp joke with real one
-      setJokes((prev) => prev.map((j) => (j.id === tempJoke.id ? created : j)));
+      setJokes((prev) => prev.map((j) => (j.id === tempJoke.id ? normalizeJoke(created) : j)));
     } catch (err) {
       setError(err.message || "Failed to add joke");
 
@@ -200,17 +367,24 @@ useEffect(() => {
   };
 
   const handleTrending = async () => {
-    try{
-      setMode("trending");  
+  try {
+    setLoading(true);
 
-      const trending = await getTrendingJokes();
+    setMode("trending");
+    setJokes([]);      // reset
+    setPage(1);
+    setHasMore(false); // no infinite scroll for trending
 
-      setJokes(trending);
+    const trending = await getTrendingJokes();
 
-    } catch(err){
-      alert(err.message);
-    }
-  };
+    setJokes(trending); // now ALWAYS array 
+
+  } catch (err) {
+    setError(err.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   //if required one button with dual function 
   const handleToggleFeed = async () => {
@@ -219,14 +393,10 @@ useEffect(() => {
 
     if (mode === "latest") {
       // switch to trending
-      const trending = await getTrendingJokes();
-      setJokes(trending);
-      setMode("trending");
+      handleTrending();
     } else {
       //switch back to latest
-      const latest = await getAllJokes();
-      setJokes(latest);
-      setMode("latest");
+      handleGetAll();
     }
 
   } catch (err) {
@@ -286,8 +456,8 @@ useEffect(() => {
 
         {/* Joke List */}
         <ul className="jokes-list">
-          {jokes.map((j) => (
-            <li key={j.id} className="joke-card">
+          {Array.isArray(jokes) && jokes.map((j,index) => (
+            <li key={j.id } className="joke-card">
               {editingId === j.id ? (
                 <>
                   <input
@@ -311,7 +481,7 @@ useEffect(() => {
                         className="like-btn"
                         onClick={() => handleLike(j.id)}
                       >
-                        ❤️ {j.likes || 0}
+                        ❤️ {j.likes ?? 0}
                       </button>
 
                       {activeLikeId === j.id &&
@@ -332,7 +502,7 @@ useEffect(() => {
                         setOpenComments(openComments === j.id ? null : j.id)
                       }
                     >
-                      💬
+                      💬{j.comments_count ?? 0}
                     </button>
 
                     {(localStorage.getItem("role") === "admin" ||

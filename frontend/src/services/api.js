@@ -47,13 +47,29 @@ api.interceptors.response.use(
   }
 );
 
+
+// NORMALIZATION CODE
+export const normalizeJoke = (j) => ({
+  id: j.id,
+  content: j.content,
+  likes: Number(j.likes) || 0,
+  comments_count: Number.isFinite(Number(j.comments_count))
+    ? Number(j.comments_count)
+    : 0,
+  author_name: j.author_name ?? "Anonymous",
+  author_email: j.author_email ?? "",
+  created_at: j.created_at ?? new Date().toISOString(),
+});
+
+
 // ================= AUTH SERVICES =================
 
 export const loginUser = async (email, password) => {
   const { data } = await api.post("/api/auth/login", { email, password });
 
   localStorage.setItem("token", data.token);
-  localStorage.setItem("username", data.username);
+  localStorage.setItem("username", data.email);
+  localStorage.setItem("name", data.name);   
   localStorage.setItem("role", data.role);
   localStorage.setItem("userId", data.id);
 
@@ -77,30 +93,33 @@ export const logoutUser = () => {
 
 export const deleteJoke = async (id) => {
   const { data } = await api.delete(`/api/jokes/${id}`);
-  return data;
+  return normalizeJoke(data);
 };
 
 // ================= JOKE SERVICES =================
 
 export const getAllJokes = async (page = 1, limit = 10) => {
   const { data } = await api.get(`/api/jokes?page=${page}&limit=${limit}`);
-  return data;
+  return {
+    ...data,
+    jokes: data.jokes.map(normalizeJoke), 
+  };
 };
 
 
 export const getRandomJoke = async () => {
   const { data } = await api.get("/api/jokes/random");
-  return data;
+  return normalizeJoke(data);
 };
 
 export const getJokeById = async (id) => {
   const { data } = await api.get(`/api/jokes/${id}`);
-  return data;
+  return normalizeJoke(data);
 };
 
 export const addJoke = async (content) => {
   const { data } = await api.post("/api/jokes", { content });
-  return data;
+  return normalizeJoke(data);
 };
 
 // ================= UPDATE JOKE =================
@@ -108,32 +127,47 @@ export const addJoke = async (content) => {
 export const updateJoke = async (id, content) => {
   console.log("Updating joke:", id, content);
   const { data } = await api.put(`/api/jokes/${id}`, { content });
-  return data;
+  return normalizeJoke(data);
 };
 
 // ================= LIKE JOKE =================
 // backend me abhi nhi dala hai like ka
 export const likeJoke = async (id) => {
   const { data } = await api.post(`/api/jokes/${id}/like`);
-  return data;
+  return normalizeJoke(data);
 };
 
 
 export const getCommentsByJoke = async (jokeId) => {
   const { data } = await api.get(`/api/jokes/${jokeId}/comments`);
-  return data;
+
+  return data.map((c) => ({
+    id: c.id,
+    comment: c.comment,
+    username: c.username ?? "Anonymous",
+    created_at: c.created_at,
+  }));
 };
 
 export const addComment = async (jokeId, comment) => {
   const { data } = await api.post(`/api/jokes/${jokeId}/comments`, {
     comment,
   });
-  return data;
+
+  return {
+    id: data.id,
+    comment: data.comment,
+    username: data.username ?? "Anonymous",
+    created_at: data.created_at,
+  };
 };
 
 export const getTrendingJokes = async () => {
   const { data } = await api.get("/api/jokes/trending");
-  return data;
+
+  return Array.isArray(data)
+    ? data.map(normalizeJoke)
+    : [];
 };
 
 export default api;

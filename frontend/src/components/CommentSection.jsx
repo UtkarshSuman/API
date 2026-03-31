@@ -27,7 +27,7 @@ export default function CommentSection({ jokeId, token, cachedComments, setComme
 
     } catch (err) {
       console.error("Loading comments error",err);
-      setComment([]);
+      setComments([]);
     } finally {
       setLoading(false);
     }
