@@ -32,11 +32,10 @@ const io = new Server(server, {
 app.set("io", io);
 
 // track unique users with connection count
-let onlineUsers = new Map(); // userId se number of connections
+const onlineUsers = new Map();
 
 io.on("connection", (socket) => {
 
-  // user comes online
   socket.on("userOnline", (userId) => {
     socket.userId = userId;
 
@@ -46,15 +45,11 @@ io.on("connection", (socket) => {
     io.emit("onlineUsers", onlineUsers.size);
   });
 
-  // join comment room
   socket.on("joinJokeRoom", (jokeId) => {
     socket.join(`joke_${jokeId}`);
   });
 
-  // disconnect
   socket.on("disconnect", () => {
-    console.log("User disconnected:", socket.id);
-
     if (socket.userId) {
       const count = onlineUsers.get(socket.userId);
 
