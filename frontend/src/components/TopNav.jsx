@@ -36,8 +36,10 @@ export default function TopNav({ isLoggedIn }) {
   const handleLogout = () => {
     const userId = localStorage.getItem("userId");
 
-    socket.emit("userOffline", userId); // 🔥 remove from backend
-    socket.disconnect(); // 🔥 close connection
+    if (userId) {
+    socket.emit("userOffline", userId); 
+    } 
+    socket.disconnect(); 
 
     logoutUser();
     navigate("/login", { replace: true });

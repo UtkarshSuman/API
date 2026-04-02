@@ -98,11 +98,18 @@ export const deleteJoke = async (id) => {
 
 // ================= JOKE SERVICES =================
 
-export const getAllJokes = async (page = 1, limit = 10) => {
-  const { data } = await api.get(`/api/jokes?page=${page}&limit=${limit}`);
+export const getAllJokes = async (cursor = null, limit = 10) => {
+  let url = `/api/jokes?limit=${limit}`;
+
+  if (cursor) {
+    url += `&cursorCreatedAt=${cursor.created_at}&cursorId=${cursor.id}`;
+  }
+
+  const { data } = await api.get(url);
+
   return {
     ...data,
-    jokes: data.jokes.map(normalizeJoke), 
+    jokes: data.jokes.map(normalizeJoke),
   };
 };
 

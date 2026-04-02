@@ -34,205 +34,196 @@ function Jokes() {
   const [mode, setMode] = useState("latest");
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [cursor, setCursor] = useState(null);
+  const fetchingRef = useRef(false);
 
   // load jokes effect
-useEffect(() => {
-  if (mode === "latest") {
-    fetchJokes();
-  }
-}, [page, mode]);
+  useEffect(() => {
+    if (mode === "latest") {
+      fetchJokes();
+    }
+  }, [mode]);
 
-useEffect(() => {
-  socket.connect();
+  useEffect(() => {
+    socket.connect();
 
-  return () => {
-    socket.disconnect();
-  };
-}, []);
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
 
-useEffect(() => {
-  const userId = localStorage.getItem("userId");
+  useEffect(() => {
+    const userId = localStorage.getItem("userId");
 
-  if (!userId) return;
+    if (!userId) return;
 
-  const handleConnect = () => {
-    console.log("Socket connected:", socket.id);
-    socket.emit("userOnline", userId); // always runs after connect
-  };
+    const handleConnect = () => {
+      console.log("Socket connected:", socket.id);
+      socket.emit("userOnline", userId); // always runs after connect
+    };
 
-  socket.on("connect", handleConnect);
+    socket.on("connect", handleConnect);
 
-  // if already connected
-  if (socket.connected) {
-    handleConnect();
-  }
+    // if already connected
+    if (socket.connected) {
+      handleConnect();
+    }
 
-  return () => {
-    socket.off("connect", handleConnect);
-  };
-}, []);
+    return () => {
+      socket.off("connect", handleConnect);
+    };
+  }, []);
 
+  useEffect(() => {
+    const handleOnlineUsers = (count) => {
+      console.log("Online Users:", count);
+    };
 
-useEffect(() => {
-  const handleOnlineUsers = (count) => {
-    console.log("Online Users:", count);
-  };
+    socket.on("onlineUsers", handleOnlineUsers);
 
-  socket.on("onlineUsers", handleOnlineUsers);
+    return () => {
+      socket.off("onlineUsers", handleOnlineUsers);
+    };
+  }, []);
 
-  return () => {
-    socket.off("onlineUsers", handleOnlineUsers);
-  };
-}, []);
-
-useEffect(() => {
-  if (jokeId) {
-    socket.emit("joinJokeRoom", jokeId);
-  }
-}, [jokeId]);
-
-
-
+  useEffect(() => {
+    if (jokeId) {
+      socket.emit("joinJokeRoom", jokeId);
+    }
+  }, [jokeId]);
 
   // infinite scroll effect
   useEffect(() => {
   const handleScroll = () => {
     if (
-  window.innerHeight + document.documentElement.scrollTop + 100 >=
-    document.documentElement.scrollHeight &&
-  hasMore &&
-  !loading
-) {
-  setPage(prev => prev + 1);
-}
+      window.innerHeight + document.documentElement.scrollTop + 100 >=
+        document.documentElement.scrollHeight &&
+      hasMore &&
+      !loading &&
+      !fetchingRef.current
+    ) {
+      fetchJokes();   // directly call
+    }
   };
 
   window.addEventListener("scroll", handleScroll);
-
   return () => window.removeEventListener("scroll", handleScroll);
-}, [hasMore, loading, mode]);
+}, [hasMore, loading, cursor]);
 
+  useEffect(() => {
+    const handleCommentCount = (data) => {
+      setJokes((prev) =>
+        prev.map((j) =>
+          Number(j.id) === Number(data.jokeId)
+            ? { ...j, comments_count: data.commentsCount }
+            : j,
+        ),
+      );
+    };
 
-useEffect(() => {
-  const handleCommentCount = (data) => {
-    setJokes(prev =>
-      prev.map(j =>
-        j.id === data.jokeId
-          ? { ...j, comments_count: data.commentsCount }
-          : j
-      )
-    );
-  };
+    socket.on("commentCountUpdated", handleCommentCount);
 
-  socket.on("commentCountUpdated", handleCommentCount);
+    return () => socket.off("commentCountUpdated", handleCommentCount);
+  }, []);
 
-  return () => socket.off("commentCountUpdated", handleCommentCount);
-}, []);
+  // Auto-fetch if content is not scrollable, last ka bacha hua
+  useEffect(() => {
+  const isScrollable =
+    document.documentElement.scrollHeight > window.innerHeight;
 
+  if (!isScrollable && hasMore && !loading) {
+    setPage(prev => prev + 1);
+  }
+}, [jokes]);
 
 
   // socket listener code
-useEffect(() => {
-  const handleLikeUpdate = (data) => {
-    setJokes((prev) => {
-      return prev.map((j) => {
-        if (j.id === data.jokeId) {
-          return { ...j, likes: data.likes };
-        }
-        return j;
+  useEffect(() => {
+    const handleLikeUpdate = (data) => {
+      setJokes((prev) => {
+        return prev.map((j) => {
+          if (j.id === data.jokeId) {
+            return { ...j, likes: data.likes };
+          }
+          return j;
+        });
       });
-    });
-  };
+    };
 
-  socket.on("likeUpdated", handleLikeUpdate);
+    socket.on("likeUpdated", handleLikeUpdate);
 
-  return () => {
-    socket.off("likeUpdated", handleLikeUpdate);
-  };
-}, []);
-
+    return () => {
+      socket.off("likeUpdated", handleLikeUpdate);
+    };
+  }, []);
 
   const userId = localStorage.getItem("userId");
 
-
   const loadJokes = async () => {
-  try {
-    setLoading(true);
+    try {
+      setLoading(true);
 
-    if (mode === "latest") {
-      const res = await getAllJokes(page);
+      if (mode === "latest") {
+        const res = await getAllJokes(page);
 
-      setJokes(prev => [...prev, ...res.jokes]);
-      setHasMore(res.hasMore);
-
-    } else {
-      // trending doesn't paginate
-      const trending = await getTrendingJokes();
-      setJokes(trending);
-      setHasMore(false);
+        setJokes((prev) => [...prev, ...res.jokes]);
+        setHasMore(res.hasMore);
+      } else {
+        // trending doesn't paginate
+        const trending = await getTrendingJokes();
+        setJokes(trending);
+        setHasMore(false);
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
+  };
 
-  } catch (err) {
-    setError(err.message);
-  } finally {
-    setLoading(false);
-  }
-};
+  const handleGetAll = async () => {
+    try {
+      setMode("latest");
+      setLoading(true);
 
+      setJokes([]);
+      setPage(1);
+      setHasMore(true);
 
-const handleGetAll = async () => {
-  
-  try {
-    setMode("latest");
-    setLoading(true);
+      const data = await getAllJokes(1);
 
-    setJokes([]);
-    setPage(1);
-    setHasMore(true);
-
-    const data = await getAllJokes(1);
-
-    setJokes(data.jokes);
-    setHasMore(data.hasMore);
-
-  } catch (err) {
-    setError(err.message);
-  } finally {
-    setLoading(false);
-  }
-};
+      setJokes(data.jokes);
+      setHasMore(data.hasMore);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Get All Jokes
   const fetchJokes = async () => {
-  if (loading || !hasMore) return;
+  if (loading || !hasMore || fetchingRef.current) return;
 
+  fetchingRef.current = true;
   setLoading(true);
-  setError(null);
 
   try {
-    const data = await getAllJokes(page);
+    const data = await getAllJokes(cursor);
 
-    // ensure it's always an array
     const incoming = Array.isArray(data.jokes) ? data.jokes : [];
 
-    setJokes((prev) => {
-      const prevIds = new Set(prev.map((j) => j.id));
+    setJokes((prev) => [...prev, ...incoming]);
 
-      const filtered = incoming.filter((j) => !prevIds.has(j.id));
-
-      return [...prev, ...filtered];
-    });
-
-    setHasMore(data.hasMore ?? false);
-
+    setHasMore(data.hasMore);
+    setCursor(data.nextCursor);   //IMPORTANT
   } catch (err) {
-    setError(err.message || "Failed to fetch jokes");
+    setError(err.message);
   } finally {
     setLoading(false);
+    fetchingRef.current = false;
   }
 };
-
-
   // Get Random Joke
   const handleRandom = async () => {
     setLoading(true);
@@ -241,6 +232,8 @@ const handleGetAll = async () => {
     try {
       const data = await getRandomJoke();
       setJokes([data]);
+      setCursor(null);
+      setHasMore(false);
     } catch (err) {
       setError(err.message || "Failed to fetch random joke");
     } finally {
@@ -251,9 +244,9 @@ const handleGetAll = async () => {
   // Get Joke By ID
   const handleGetById = async () => {
     if (!jokeId.trim() || isNaN(jokeId)) {
-    setError("Please enter a valid numeric ID");
-    return;
-  }
+      setError("Please enter a valid numeric ID");
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -292,8 +285,8 @@ const handleGetAll = async () => {
       id: Date.now(),
       content: newJoke,
       author_name: localStorage.getItem("name") || "You",
-      comments_count: 0, 
-      likes: 0 
+      comments_count: 0,
+      likes: 0,
     });
 
     // instant UI update
@@ -304,7 +297,9 @@ const handleGetAll = async () => {
       const created = await addJoke(newJoke);
 
       // replace temp joke with real one
-      setJokes((prev) => prev.map((j) => (j.id === tempJoke.id ? normalizeJoke(created) : j)));
+      setJokes((prev) =>
+        prev.map((j) => (j.id === tempJoke.id ? normalizeJoke(created) : j)),
+      );
     } catch (err) {
       setError(err.message || "Failed to add joke");
 
@@ -345,7 +340,10 @@ const handleGetAll = async () => {
       const updated = await likeJoke(id);
 
       // update UI
-      setJokes((prev) => prev.map((j) => (j.id === id ? updated : j)));
+      // ham sirf likes update kar rhe hai naki pura object
+      setJokes((prev) =>
+        prev.map((j) => (j.id === id ? { ...j, likes: updated.likes } : j)),
+      );
 
       // trigger animation after success
       setActiveLikeId(id);
@@ -367,44 +365,42 @@ const handleGetAll = async () => {
   };
 
   const handleTrending = async () => {
-  try {
-    setLoading(true);
+    try {
+      setLoading(true);
 
-    setMode("trending");
-    setJokes([]);      // reset
-    setPage(1);
-    setHasMore(false); // no infinite scroll for trending
+      setMode("trending");
+      setJokes([]); // reset
+      setPage(1);
+      setHasMore(false); // no infinite scroll for trending
 
-    const trending = await getTrendingJokes();
+      const trending = await getTrendingJokes();
 
-    setJokes(trending); // now ALWAYS array 
-
-  } catch (err) {
-    setError(err.message);
-  } finally {
-    setLoading(false);
-  }
-};
-
-  //if required one button with dual function 
-  const handleToggleFeed = async () => {
-  try {
-    setLoading(true);
-
-    if (mode === "latest") {
-      // switch to trending
-      handleTrending();
-    } else {
-      //switch back to latest
-      handleGetAll();
+      setJokes(trending); // now ALWAYS array
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
+  };
 
-  } catch (err) {
-    alert(err.message);
-  } finally {
-    setLoading(false);
-  }
-};
+  //if required one button with dual function
+  const handleToggleFeed = async () => {
+    try {
+      setLoading(true);
+
+      if (mode === "latest") {
+        // switch to trending
+        handleTrending();
+      } else {
+        //switch back to latest
+        handleGetAll();
+      }
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="page-bg">
@@ -456,87 +452,89 @@ const handleGetAll = async () => {
 
         {/* Joke List */}
         <ul className="jokes-list">
-          {Array.isArray(jokes) && jokes.map((j,index) => (
-            <li key={j.id } className="joke-card">
-              {editingId === j.id ? (
-                <>
-                  <input
-                    value={editText}
-                    onChange={(e) => setEditText(e.target.value)}
-                  />
+          {Array.isArray(jokes) &&
+            jokes.map((j, index) => (
+              <li key={j.id} className="joke-card">
+                {editingId === j.id ? (
+                  <>
+                    <input
+                      value={editText}
+                      onChange={(e) => setEditText(e.target.value)}
+                    />
 
-                  <button onClick={() => handleUpdate(j.id)}>Save</button>
+                    <button onClick={() => handleUpdate(j.id)}>Save</button>
 
-                  <button onClick={() => setEditingId(null)}>Cancel</button>
-                </>
-              ) : (
-                <>
-                  <p>{j.content}</p>
+                    <button onClick={() => setEditingId(null)}>Cancel</button>
+                  </>
+                ) : (
+                  <>
+                    <p>{j.content}</p>
 
-                  {j.author_name && <small>By: {j.author_name}</small>}
+                    {j.author_name && <small>By: {j.author_name}</small>}
 
-                  <div className="joke-actions">
-                    <div className="like-container">
+                    <div className="joke-actions">
+                      <div className="like-container">
+                        <button
+                          className="like-btn"
+                          onClick={() => handleLike(j.id)}
+                        >
+                          ❤️ {j.likes ?? 0}
+                        </button>
+
+                        {activeLikeId === j.id &&
+                          hearts.map((h) => (
+                            <span
+                              key={h.id}
+                              className="floating-heart"
+                              style={{ left: `${h.left}px` }}
+                            >
+                              ❤️
+                            </span>
+                          ))}
+                      </div>
+
+                      {/* 💬 COMMENT BUTTON */}
                       <button
-                        className="like-btn"
-                        onClick={() => handleLike(j.id)}
+                        onClick={() =>
+                          setOpenComments(openComments === j.id ? null : j.id)
+                        }
                       >
-                        ❤️ {j.likes ?? 0}
+                        💬{j.comments_count ?? 0}
                       </button>
 
-                      {activeLikeId === j.id &&
-                        hearts.map((h) => (
-                          <span
-                            key={h.id}
-                            className="floating-heart"
-                            style={{ left: `${h.left}px` }}
+                      {(localStorage.getItem("role") === "admin" ||
+                        localStorage.getItem("username") ===
+                          j.author_email) && (
+                        <>
+                          <button
+                            className="edit-btn"
+                            onClick={() => handleEdit(j)}
                           >
-                            ❤️
-                          </span>
-                        ))}
+                            Edit
+                          </button>
+
+                          <button
+                            className="delete-btn"
+                            onClick={() => handleDelete(j.id)}
+                          >
+                            Delete
+                          </button>
+                        </>
+                      )}
                     </div>
 
-                    {/* 💬 COMMENT BUTTON */}
-                    <button
-                      onClick={() =>
-                        setOpenComments(openComments === j.id ? null : j.id)
-                      }
-                    >
-                      💬{j.comments_count ?? 0}
-                    </button>
-
-                    {(localStorage.getItem("role") === "admin" ||
-                      localStorage.getItem("username") === j.author_email) && (
-                      <>
-                        <button
-                          className="edit-btn"
-                          onClick={() => handleEdit(j)}
-                        >
-                          Edit
-                        </button>
-
-                        <button
-                          className="delete-btn"
-                          onClick={() => handleDelete(j.id)}
-                        >
-                          Delete
-                        </button>
-                      </>
+                    {openComments === j.id && (
+                      <CommentSection
+                        jokeId={j.id}
+                        token={localStorage.getItem("token")}
+                        cachedComments={commentsMap[j.id]}
+                        setCommentsMap={setCommentsMap}
+                      />
                     )}
-                  </div>
-
-                  {openComments === j.id && (
-                    <CommentSection
-                      jokeId={j.id}
-                      token={localStorage.getItem("token")}
-                      cachedComments={commentsMap[j.id]}
-                      setCommentsMap={setCommentsMap}
-                    />
-                  )}
-                </>
-              )}
-            </li>
-          ))}
+                  </>
+                )}
+              </li>
+            ))}
         </ul>
       </div>
     </div>

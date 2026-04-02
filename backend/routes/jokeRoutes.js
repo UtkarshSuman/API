@@ -10,35 +10,68 @@ const router = express.Router();
 
 router.get("/", async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
 
-    const offset = (page - 1) * limit;
+    const cursorCreatedAt = req.query.cursorCreatedAt;
+    const cursorId = req.query.cursorId;
 
-    const result = await pool.query(
-      `SELECT jokes.id,
-              jokes.content,
-              jokes.created_at,
-              jokes.likes,
-              users.name AS author_name,
-              users.email AS author_email,
-              COUNT(c.id)::int AS comments_count
-       FROM jokes
-       JOIN users ON jokes.author_id = users.id
-       LEFT JOIN comments c ON jokes.id = c.joke_id
-       GROUP BY jokes.id, users.name, users.email
-       ORDER BY jokes.created_at DESC
-       LIMIT $1 OFFSET $2`,
-      [limit, offset]
-    );
+    let query = `
+      SELECT jokes.id,
+             jokes.content,
+             jokes.created_at,
+             jokes.likes,
+             users.name AS author_name,
+             users.email AS author_email,
+             COUNT(c.id)::int AS comments_count
+      FROM jokes
+      JOIN users ON jokes.author_id = users.id
+      LEFT JOIN comments c ON jokes.id = c.joke_id
+    `;
+
+    const values = [];
+    let whereClause = "";
+
+    // cursor condition
+    if (cursorCreatedAt && cursorId) {
+      values.push(cursorCreatedAt, cursorId);
+
+      whereClause = `
+        WHERE (jokes.created_at, jokes.id) < ($1, $2)
+      `;
+    }
+
+    query += `
+      ${whereClause}
+      GROUP BY jokes.id, users.name, users.email
+      ORDER BY jokes.created_at DESC, jokes.id DESC
+      LIMIT $${values.length + 1}
+    `;
+
+    values.push(limit + 1); // fetch extra
+
+    const result = await pool.query(query, values);
+
+    let jokes = result.rows;
+    const hasMore = jokes.length > limit;
+
+    if (hasMore) {
+      jokes = jokes.slice(0, limit);
+    }
+
+    // next cursor
+    const nextCursor =
+      jokes.length > 0
+        ? {
+            created_at: jokes[jokes.length - 1].created_at,
+            id: jokes[jokes.length - 1].id,
+          }
+        : null;
 
     res.json({
-      page,
-      limit,
-      jokes: result.rows,
-      hasMore: result.rows.length === limit  //  important
+      jokes,
+      hasMore,
+      nextCursor,
     });
-
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });
@@ -325,7 +358,6 @@ router.post("/:id/like", protect, async (req, res) => {
 });
 
 
-// database scema to load joke faster ->>>>>>>>>>>>>>>>>>>>    CREATE INDEX idx_comments_joke_id ON comments(joke_id);
 router.get("/:id/comments", async (req, res) => {
   try {
     const jokeId = req.params.id;
@@ -434,4 +466,4 @@ if (author.email !== req.user.email) {
 
 
 
-export default router;
+export default router; 
