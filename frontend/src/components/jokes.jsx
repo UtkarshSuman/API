@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect,useRef } from "react";
 import socket from "../socket";
 import { useNavigate } from "react-router-dom";
 import {
@@ -32,14 +32,13 @@ function Jokes() {
   const [openComments, setOpenComments] = useState(null);
   const [commentsMap, setCommentsMap] = useState({});
   const [mode, setMode] = useState("latest");
-  const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [cursor, setCursor] = useState(null);
   const fetchingRef = useRef(false);
 
   // load jokes effect
   useEffect(() => {
-    if (mode === "latest") {
+    if (mode === "latest" && jokes.length === 0) {
       fetchJokes();
     }
   }, [mode]);
@@ -96,19 +95,29 @@ function Jokes() {
   useEffect(() => {
   const handleScroll = () => {
     if (
+      mode === "latest" &&
       window.innerHeight + document.documentElement.scrollTop + 100 >=
         document.documentElement.scrollHeight &&
       hasMore &&
       !loading &&
       !fetchingRef.current
     ) {
-      fetchJokes();   // directly call
+      fetchJokes();
     }
   };
 
   window.addEventListener("scroll", handleScroll);
   return () => window.removeEventListener("scroll", handleScroll);
-}, [hasMore, loading, cursor]);
+}, [hasMore, loading, mode]);
+
+useEffect(() => {
+  const isScrollable =
+    document.documentElement.scrollHeight > window.innerHeight;
+
+  if (!isScrollable && hasMore && !loading && !fetchingRef.current) {
+    fetchJokes();
+  }
+}, [jokes]);
 
   useEffect(() => {
     const handleCommentCount = (data) => {
@@ -125,16 +134,6 @@ function Jokes() {
 
     return () => socket.off("commentCountUpdated", handleCommentCount);
   }, []);
-
-  // Auto-fetch if content is not scrollable, last ka bacha hua
-  useEffect(() => {
-  const isScrollable =
-    document.documentElement.scrollHeight > window.innerHeight;
-
-  if (!isScrollable && hasMore && !loading) {
-    setPage(prev => prev + 1);
-  }
-}, [jokes]);
 
 
   // socket listener code
@@ -159,47 +158,14 @@ function Jokes() {
 
   const userId = localStorage.getItem("userId");
 
-  const loadJokes = async () => {
-    try {
-      setLoading(true);
-
-      if (mode === "latest") {
-        const res = await getAllJokes(page);
-
-        setJokes((prev) => [...prev, ...res.jokes]);
-        setHasMore(res.hasMore);
-      } else {
-        // trending doesn't paginate
-        const trending = await getTrendingJokes();
-        setJokes(trending);
-        setHasMore(false);
-      }
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleGetAll = async () => {
-    try {
-      setMode("latest");
-      setLoading(true);
-
-      setJokes([]);
-      setPage(1);
-      setHasMore(true);
-
-      const data = await getAllJokes(1);
-
-      setJokes(data.jokes);
-      setHasMore(data.hasMore);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  
+  const handleGetAll = () => {
+  setError(null);
+  setMode("latest");
+  setJokes([]);
+  setCursor(null);
+  setHasMore(true);   
+};
 
   // Get All Jokes
   const fetchJokes = async () => {
@@ -216,7 +182,9 @@ function Jokes() {
     setJokes((prev) => [...prev, ...incoming]);
 
     setHasMore(data.hasMore);
-    setCursor(data.nextCursor);   //IMPORTANT
+    if (data.nextCursor) {
+    setCursor(data.nextCursor);
+    }   //IMPORTANT
   } catch (err) {
     setError(err.message);
   } finally {
@@ -366,11 +334,12 @@ function Jokes() {
 
   const handleTrending = async () => {
     try {
+      setError(null);
       setLoading(true);
 
       setMode("trending");
       setJokes([]); // reset
-      setPage(1);
+      setCursor(null);
       setHasMore(false); // no infinite scroll for trending
 
       const trending = await getTrendingJokes();

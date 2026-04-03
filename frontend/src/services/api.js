@@ -101,7 +101,7 @@ export const deleteJoke = async (id) => {
 export const getAllJokes = async (cursor = null, limit = 10) => {
   let url = `/api/jokes?limit=${limit}`;
 
-  if (cursor) {
+  if (cursor && cursor.created_at && cursor.id) {
     url += `&cursorCreatedAt=${cursor.created_at}&cursorId=${cursor.id}`;
   }
 

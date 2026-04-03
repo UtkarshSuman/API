@@ -32,7 +32,12 @@ router.get("/", async (req, res) => {
     let whereClause = "";
 
     // cursor condition
-    if (cursorCreatedAt && cursorId) {
+    if (
+      cursorCreatedAt &&
+      cursorId &&
+      !isNaN(new Date(cursorCreatedAt).getTime()) &&
+      !isNaN(parseInt(cursorId))
+    ) {
       values.push(cursorCreatedAt, cursorId);
 
       whereClause = `
@@ -62,9 +67,9 @@ router.get("/", async (req, res) => {
     const nextCursor =
       jokes.length > 0
         ? {
-            created_at: jokes[jokes.length - 1].created_at,
-            id: jokes[jokes.length - 1].id,
-          }
+          created_at: jokes[jokes.length - 1].created_at,
+          id: jokes[jokes.length - 1].id,
+        }
         : null;
 
     res.json({
@@ -142,9 +147,9 @@ router.get("/trending", async (req, res) => {
 router.get("/:id", async (req, res) => {
   const id = parseInt(req.params.id);
 
-if (isNaN(id)) {
-  return res.status(400).json({ message: "Invalid joke id" });
-}
+  if (isNaN(id)) {
+    return res.status(400).json({ message: "Invalid joke id" });
+  }
 
   try {
     const result = await pool.query(
@@ -191,9 +196,9 @@ router.post("/", protect, async (req, res) => {
       "INSERT INTO jokes (content, author_id) VALUES ($1, $2) RETURNING *",
       [content, req.user.id]
     );
-   
+
     const fullJoke = await pool.query(
-   `SELECT j.id,
+      `SELECT j.id,
           j.content,
           j.created_at,
           j.likes,
@@ -202,8 +207,8 @@ router.post("/", protect, async (req, res) => {
     FROM jokes j
     JOIN users u ON j.author_id = u.id
     WHERE j.id = $1`,
-  [result.rows[0].id]
-  );
+      [result.rows[0].id]
+    );
 
     res.status(201).json(fullJoke.rows[0]);
 
@@ -216,9 +221,9 @@ router.post("/", protect, async (req, res) => {
 router.delete("/:id", protect, async (req, res) => {
   const id = parseInt(req.params.id);
 
-if (isNaN(id)) {
-  return res.status(400).json({ message: "Invalid joke id" });
-}
+  if (isNaN(id)) {
+    return res.status(400).json({ message: "Invalid joke id" });
+  }
 
   try {
     const result = await pool.query(
@@ -312,7 +317,7 @@ router.post("/:id/like", protect, async (req, res) => {
       );
 
       await pool.query(
-        "UPDATE jokes SET likes = likes - 1 WHERE id=$1",
+        "UPDATE jokes SET likes = GREATEST(likes - 1,0) WHERE id=$1",
         [jokeId]
       );
     } else {
@@ -320,7 +325,7 @@ router.post("/:id/like", protect, async (req, res) => {
         "INSERT INTO likes(user_id, joke_id) VALUES($1,$2)",
         [userId, jokeId]
       );
-      
+
       await pool.query(
         "UPDATE jokes SET likes = likes + 1 WHERE id=$1",
         [jokeId]
@@ -340,7 +345,7 @@ router.post("/:id/like", protect, async (req, res) => {
        WHERE j.id = $1`,
       [jokeId]
     );
-    
+
     // socket emits here
     const io = req.app.get("io");
 
@@ -383,7 +388,9 @@ router.post("/:id/comments", protect, async (req, res) => {
   try {
     const jokeId = req.params.id;
     const userId = req.user.id;
-    const { comment } = req.body;
+    if (!comment || comment.trim() === "") {
+      return res.status(400).json({ message: "Comment cannot be empty" });
+    }
 
     const newComment = await pool.query(
       `INSERT INTO comments (joke_id, user_id, comment)
@@ -410,40 +417,44 @@ router.post("/:id/comments", protect, async (req, res) => {
     );
 
 
-// avoid sending email to self
-const author = jokeOwner.rows[0];
+    // avoid sending email to self
+    if (jokeOwner.rows.length === 0) {
+      return res.status(404).json({ message: "Joke not found" });
+    }
 
-console.log("Author:", author);
-console.log("User:", req.user);
+    const author = jokeOwner.rows[0];
 
-if (author.email !== req.user.email) {
-  try {
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: author.email,
-      subject: "New Comment on Your Joke 😂",
-      html: `
+    console.log("Author:", author);
+    console.log("User:", req.user);
+
+    if (author.email !== req.user.email) {
+      try {
+        await transporter.sendMail({
+          from: process.env.EMAIL_USER,
+          to: author.email,
+          subject: "New Comment on Your Joke 😂",
+          html: `
         <h3>Hey ${author.name}!</h3>
         <p>Someone commented on your joke:</p>
         <blockquote>${author.content}</blockquote>
         <p><b>Comment:</b> ${comment}</p>
       `,
-    });
+        });
 
-    console.log("Email sent successfully");
-  } catch (err) {
-    console.error("Email error:", err);
-  }
-}
+        console.log("Email sent successfully");
+      } catch (err) {
+        console.error("Email error:", err);
+      }
+    }
     const io = req.app.get("io");
 
     // get updated count
     const countResult = await pool.query(
-       "SELECT COUNT(*) FROM comments WHERE joke_id = $1",
+      "SELECT COUNT(*) FROM comments WHERE joke_id = $1",
       [jokeId]
     );
 
-   const commentsCount = parseInt(countResult.rows[0].count);
+    const commentsCount = parseInt(countResult.rows[0].count);
 
     // emit update
     io.emit("commentCountUpdated", {
