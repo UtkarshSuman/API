@@ -388,6 +388,9 @@ router.post("/:id/comments", protect, async (req, res) => {
   try {
     const jokeId = req.params.id;
     const userId = req.user.id;
+
+    const { comment } = req.body;
+
     if (!comment || comment.trim() === "") {
       return res.status(400).json({ message: "Comment cannot be empty" });
     }
