@@ -45,14 +45,23 @@ io.on("connection", (socket) => {
     io.emit("onlineUsers", onlineUsers.size);
   });
 
-  socket.on("joinJokeRoom", (jokeId) => {
-    socket.join(`joke_${jokeId}`);
+  socket.on("joinJokeRoom", (room) => {
+    socket.join(room);
   });
 
   socket.on("userOffline", (userId) => {
+  const count = onlineUsers.get(userId);
+
+  if (!count) return;
+
+  if (count <= 1) {
     onlineUsers.delete(userId);
-    io.emit("onlineUsers", onlineUsers.size);
-  });
+  } else {
+    onlineUsers.set(userId, count - 1);
+  }
+
+  io.emit("onlineUsers", onlineUsers.size);
+});
 
   socket.on("disconnect", () => {
     if (socket.userId) {
