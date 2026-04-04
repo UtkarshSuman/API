@@ -1,4 +1,5 @@
 import axios from "axios";
+import socket from "../socket";
 
 // ================= BASE URL =================
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
@@ -83,10 +84,13 @@ export const registerUser = async (userData) => {
  
 
 export const logoutUser = () => {
+  socket.disconnect();
+
   localStorage.removeItem("token");
   localStorage.removeItem("username");
   localStorage.removeItem("role");
   localStorage.removeItem("userId");
+  window.location.href = "/login";
   
 };
 

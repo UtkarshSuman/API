@@ -44,11 +44,12 @@ function Jokes() {
   }, [mode]);
 
   useEffect(() => {
+  if (!socket.connected) {
     socket.connect();
-
-    return () => {
-      socket.disconnect();
-    };
+  }
+  return () => {
+    socket.disconnect();
+  };
   }, []);
 
   useEffect(() => {

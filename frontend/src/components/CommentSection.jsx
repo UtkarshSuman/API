@@ -7,6 +7,13 @@ export default function CommentSection({ jokeId, token, cachedComments, setComme
   const [comments, setComments] = useState([]);
   const [comment, setComment] = useState("");
   const [loading, setLoading] = useState(false);
+  const [posting, setPosting] = useState(false);
+
+
+  useEffect(() => {
+  const box = document.querySelector(".comment-list");
+  if (box) box.scrollTop = box.scrollHeight;
+  }, [comments]);
 
 
   // loads comments with caching
@@ -37,24 +44,18 @@ export default function CommentSection({ jokeId, token, cachedComments, setComme
   if (!comment.trim()) return;
 
   try {
+    setPosting(true);
+    
+     const newComment = await addComment(jokeId, comment);
 
-    setLoading(true);
-    const newComment = await addComment(jokeId, comment, token);
-
-    // for instant ui update
+     //fallback UI update (only if socket slow)
     setComments(prev => [...prev, newComment]);
-
-    // this will Update cache also
-      setCommentsMap(prev => ({
-        ...prev,
-        [jokeId]: [...(prev[jokeId] || []), newComment]
-      }));
 
     setComment("");
   } catch (err) {
     console.error("Add comment error:",err);
   } finally {
-    setLoading(false);
+    setPosting(false);
   }
 };
 
@@ -65,7 +66,7 @@ export default function CommentSection({ jokeId, token, cachedComments, setComme
     handleLoadComments();
   }
 
-  socket.emit("joinJokeRoom", jokeId);
+  socket.emit("joinJokeRoom", `joke_${jokeId}`);
 
   // Listen for new comments (NO DUPLICATES)
     const handleNewComment = (data) => {
@@ -83,11 +84,12 @@ export default function CommentSection({ jokeId, token, cachedComments, setComme
         }));
       }
     };
-
+    
+    socket.off("newComment");   //prevent duplicates
     socket.on("newComment",handleNewComment);
 
   return () => socket.off("newComment",handleNewComment);
-}, [jokeId]);
+}, [jokeId,setCommentsMap]);
 
   return (
      <div className="comment-box">
@@ -119,7 +121,7 @@ export default function CommentSection({ jokeId, token, cachedComments, setComme
         }}
         />
 
-        <button onClick={handleSubmitComment} disabled={loading}>
+        <button onClick={handleSubmitComment} disabled={posting}>
           Post
         </button>
       </div>

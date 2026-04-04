@@ -7,32 +7,22 @@ export default function TopNav({ isLoggedIn }) {
   const navigate = useNavigate();
   const [onlineUsers, setOnlineUsers] = useState(0);
 
-  // ✅ Connect socket once
+  // socket listning not connecting or disconnecting
   useEffect(() => {
-    socket.connect();
+  const handleOnlineUsers = (count) => {
+    setOnlineUsers(count);
+  };
 
-    const handleOnlineUsers = (count) => {
-      setOnlineUsers(count);
-    };
+  socket.on("onlineUsers", handleOnlineUsers);
 
-    socket.on("onlineUsers", handleOnlineUsers);
+  return () => {
+    socket.off("onlineUsers", handleOnlineUsers);
+  };
+}, []);
 
-    return () => {
-      socket.off("onlineUsers", handleOnlineUsers);
-      socket.disconnect(); // cleanup
-    };
-  }, []);
+  
 
-  // ✅ Send user online
-  useEffect(() => {
-    const userId = localStorage.getItem("userId");
-
-    if (userId && socket.connected) {
-      socket.emit("userOnline", userId);
-    }
-  }, []);
-
-  // ✅ Logout fix (VERY IMPORTANT)
+  // Logout 
   const handleLogout = () => {
     const userId = localStorage.getItem("userId");
 
