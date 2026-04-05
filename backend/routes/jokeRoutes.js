@@ -363,7 +363,7 @@ router.post("/:id/like", protect, async (req, res) => {
 });
 
 
-router.get("/:id/comments",protect, async (req, res) => {
+router.get("/:id/comments", async (req, res) => {
   try {
     const jokeId = req.params.id;
 
