@@ -384,7 +384,7 @@ router.get("/:id/comments", async (req, res) => {
   }
 });
 
-router.post("/:id/comments", async (req, res) => {
+router.post("/:id/comments",protect, async (req, res) => {
   try {
     const jokeId = req.params.id;
     const userId = req.user.id;

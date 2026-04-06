@@ -37,6 +37,8 @@ const onlineUsers = new Map();
 io.on("connection", (socket) => {
 
   socket.on("userOnline", (userId) => {
+    if (socket.userId) return; // prevent duplicate
+
     socket.userId = userId;
 
     const count = onlineUsers.get(userId) || 0;
