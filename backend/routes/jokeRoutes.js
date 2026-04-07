@@ -407,84 +407,73 @@ router.post("/:id/comments", protect, async (req, res) => {
     );
 
     const fullComment = await pool.query(
-      `SELECT comments.*, users.name AS username
+      `SELECT comments.id, comments.comment, comments.created_at, users.name AS username
        FROM comments
        JOIN users ON comments.user_id = users.id
        WHERE comments.id = $1`,
       [newComment.rows[0].id]
     );
 
-    //  SEND RESPONSE IMMEDIATELY
+    // ✅ send response instantly
     res.json(fullComment.rows[0]);
 
-    // get joke author
-    const jokeOwner = await pool.query(
-      `SELECT u.email, u.name, j.content
-       FROM jokes j
-       JOIN users u ON j.author_id = u.id
-       WHERE j.id = $1`,
-      [jokeId]
-    );
-
-
-    // avoid sending email to self
-    if (jokeOwner.rows.length === 0) {
-      return res.status(404).json({ message: "Joke not found" });
-    }
-
-    const author = jokeOwner.rows[0];
-
-    console.log("Author:", author);
-    console.log("User:", req.user);
-
-    if (author.email !== req.user.email) {
+    // ✅ async background work (clean)
+    (async () => {
       try {
-        //TO HANDLE EMAIL BOTTLENECK AND BLOCKING 
-        setImmediate(() => {
+        const jokeOwner = await pool.query(
+          `SELECT u.email, u.name, j.content
+           FROM jokes j
+           JOIN users u ON j.author_id = u.id
+           WHERE j.id = $1`,
+          [jokeId]
+        );
+
+        if (jokeOwner.rows.length === 0) return;
+
+        const author = jokeOwner.rows[0];
+
+        // ✅ non-blocking email
+        if (author.email !== req.user.email) {
           transporter.sendMail({
             from: process.env.EMAIL_USER,
             to: author.email,
             subject: "New Comment on Your Joke 😂",
             html: `
-      <h3>Hey ${author.name}!</h3>
-      <p>Someone commented on your joke:</p>
-      <blockquote>${author.content}</blockquote>
-      <p><b>Comment:</b> ${comment}</p>
-    `,
-          })
-            .then(() => console.log("Email sent"))
-            .catch((err) => console.error("Email error:", err));
+              <h3>Hey ${author.name}!</h3>
+              <p>Someone commented on your joke:</p>
+              <blockquote>${author.content}</blockquote>
+              <p><b>Comment:</b> ${comment}</p>
+            `,
+          }).catch(err => console.error("Email error:", err));
+        }
+
+        // ✅ accurate count
+        const countResult = await pool.query(
+          "SELECT COUNT(*) FROM comments WHERE joke_id = $1",
+          [jokeId]
+        );
+
+        const io = req.app.get("io");
+
+        io.emit("commentCountUpdated", {
+          jokeId,
+          commentsCount: Number(countResult.rows[0].count),
         });
 
-        console.log("Email sent successfully");
+        io.to(`joke_${jokeId}`).emit("newComment", {
+          jokeId,
+          comment: fullComment.rows[0],
+        });
+
       } catch (err) {
-        console.error("Email error:", err);
+        console.error("Async task error:", err);
       }
-    }
-    const io = req.app.get("io");
-
-    const countResult = await pool.query(
-      "SELECT COUNT(*) FROM comments WHERE joke_id = $1",
-      [jokeId]
-    );
-
-    io.emit("commentCountUpdated", {
-      jokeId,
-      commentsCount: Number(countResult.rows[0].count),
-    });
-    io.to(`joke_${jokeId}`).emit("newComment", {
-      jokeId,
-      comment: fullComment.rows[0]
-    });
-
-
+    })();
 
   } catch (err) {
     console.error("Add comment error:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
-
-
-
+  
 export default router; 
