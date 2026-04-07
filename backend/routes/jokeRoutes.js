@@ -16,21 +16,17 @@ router.get("/", async (req, res) => {
     const cursorId = req.query.cursorId;
 
     let query = `
-  SELECT 
-    jokes.id,
-    jokes.content,
-    jokes.created_at,
-    jokes.likes,
-    users.name AS author_name,
-    users.email AS author_email,
-    (
-      SELECT COUNT(*) 
-      FROM comments c 
-      WHERE c.joke_id = jokes.id
-    )::int AS comments_count
-  FROM jokes
-  JOIN users ON jokes.author_id = users.id
-`;
+      SELECT jokes.id,
+             jokes.content,
+             jokes.created_at,
+             jokes.likes,
+             users.name AS author_name,
+             users.email AS author_email,
+             COUNT(c.id)::int AS comments_count
+      FROM jokes
+      JOIN users ON jokes.author_id = users.id
+      LEFT JOIN comments c ON jokes.id = c.joke_id
+    `;
 
     const values = [];
     let whereClause = "";
@@ -388,7 +384,7 @@ router.get("/:id/comments", async (req, res) => {
   }
 });
 
-router.post("/:id/comments", protect, async (req, res) => {
+router.post("/:id/comments",protect, async (req, res) => {
   try {
     const jokeId = req.params.id;
     const userId = req.user.id;

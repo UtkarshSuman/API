@@ -43,36 +43,25 @@ function Jokes() {
     }
   }, [mode]);
 
+  
+
   useEffect(() => {
-  if (!socket.connected) {
-    socket.connect();
-  }
-  return () => {
-    socket.disconnect();
+  const userId = localStorage.getItem("userId");
+
+  if (!userId) return;
+
+  socket.connect();
+  
+  const handleConnect = () => {
+    socket.emit("userOnline", userId);
   };
-  }, []);
 
-  useEffect(() => {
-    const userId = localStorage.getItem("userId");
+  socket.on("connect", handleConnect);
 
-    if (!userId) return;
-
-    const handleConnect = () => {
-      console.log("Socket connected:", socket.id);
-      socket.emit("userOnline", userId); // always runs after connect
-    };
-
-    socket.on("connect", handleConnect);
-
-    // if already connected
-    if (socket.connected) {
-      handleConnect();
-    }
-
-    return () => {
-      socket.off("connect", handleConnect);
-    };
-  }, []);
+  return () => {
+    socket.off("connect", handleConnect);
+  };
+}, []);
 
   useEffect(() => {
     const handleOnlineUsers = (count) => {

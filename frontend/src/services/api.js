@@ -90,7 +90,6 @@ export const logoutUser = () => {
   localStorage.removeItem("username");
   localStorage.removeItem("role");
   localStorage.removeItem("userId");
-  window.location.href = "/login";
   
 };
 

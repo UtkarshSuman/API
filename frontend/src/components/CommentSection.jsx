@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "./CommentSection.css";
 import { getCommentsByJoke, addComment } from "../services/api.js"
 import socket from "../socket";
@@ -39,6 +40,8 @@ export default function CommentSection({ jokeId, token, cachedComments, setComme
       setLoading(false);
     }
   };
+
+  const navigate = useNavigate();
 
   const handleSubmitComment = async () => {
   if (!comment.trim()) return;
