@@ -41,8 +41,8 @@ io.on("connection", (socket) => {
 
     socket.userId = userId;
 
-    const count = onlineUsers.get(userId) || 0;
-    onlineUsers.set(userId, count + 1);
+    // ensure only ONE entry per user
+    onlineUsers.set(userId, true);
 
     io.emit("onlineUsers", onlineUsers.size);
   });
@@ -51,28 +51,15 @@ io.on("connection", (socket) => {
     socket.join(room);
   });
 
-  socket.on("userOffline", (userId) => {
-  const count = onlineUsers.get(userId);
-
-  if (!count) return;
-
-  if (count <= 1) {
-    onlineUsers.delete(userId);
-  } else {
-    onlineUsers.set(userId, count - 1);
-  }
-
-  io.emit("onlineUsers", onlineUsers.size);
-});
+  
 
   socket.on("disconnect", () => {
     if (socket.userId) {
       const count = onlineUsers.get(socket.userId);
 
-      if (count <= 1) {
+      if (socket.userId) {
         onlineUsers.delete(socket.userId);
-      } else {
-        onlineUsers.set(socket.userId, count - 1);
+        io.emit("onlineUsers", onlineUsers.size);
       }
 
       io.emit("onlineUsers", onlineUsers.size);
