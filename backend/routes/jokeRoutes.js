@@ -388,7 +388,7 @@ router.get("/:id/comments", async (req, res) => {
   }
 });
 
-router.post("/:id/comments",protect, async (req, res) => {
+router.post("/:id/comments", protect, async (req, res) => {
   try {
     const jokeId = req.params.id;
     const userId = req.user.id;
@@ -414,6 +414,9 @@ router.post("/:id/comments",protect, async (req, res) => {
       [newComment.rows[0].id]
     );
 
+    //  SEND RESPONSE IMMEDIATELY
+    res.json(fullComment.rows[0]);
+
     // get joke author
     const jokeOwner = await pool.query(
       `SELECT u.email, u.name, j.content
@@ -436,16 +439,21 @@ router.post("/:id/comments",protect, async (req, res) => {
 
     if (author.email !== req.user.email) {
       try {
-        await transporter.sendMail({
-          from: process.env.EMAIL_USER,
-          to: author.email,
-          subject: "New Comment on Your Joke 😂",
-          html: `
-        <h3>Hey ${author.name}!</h3>
-        <p>Someone commented on your joke:</p>
-        <blockquote>${author.content}</blockquote>
-        <p><b>Comment:</b> ${comment}</p>
-      `,
+        //TO HANDLE EMAIL BOTTLENECK AND BLOCKING 
+        setImmediate(() => {
+          transporter.sendMail({
+            from: process.env.EMAIL_USER,
+            to: author.email,
+            subject: "New Comment on Your Joke 😂",
+            html: `
+      <h3>Hey ${author.name}!</h3>
+      <p>Someone commented on your joke:</p>
+      <blockquote>${author.content}</blockquote>
+      <p><b>Comment:</b> ${comment}</p>
+    `,
+          })
+            .then(() => console.log("Email sent"))
+            .catch((err) => console.error("Email error:", err));
         });
 
         console.log("Email sent successfully");
@@ -474,7 +482,7 @@ router.post("/:id/comments",protect, async (req, res) => {
       comment: fullComment.rows[0]
     });
 
-    res.json(fullComment.rows[0]);
+    
 
   } catch (err) {
     console.error("Add comment error:", err);
