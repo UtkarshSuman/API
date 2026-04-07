@@ -1,4 +1,4 @@
-import React, { useState, useEffect,useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import socket from "../socket";
 import { useNavigate } from "react-router-dom";
 import {
@@ -43,25 +43,24 @@ function Jokes() {
     }
   }, [mode]);
 
-  
-
   useEffect(() => {
-  const userId = localStorage.getItem("userId");
+    const userId = localStorage.getItem("userId");
+    if (!userId) return;
 
-  if (!userId) return;
+    if (!socket.connected) {
+      socket.connect();
+    }
 
-  socket.connect();
-  
-  const handleConnect = () => {
-    socket.emit("userOnline", userId);
-  };
+    const handleConnect = () => {
+      socket.emit("userOnline", userId);
+    };
 
-  socket.on("connect", handleConnect);
+    socket.on("connect", handleConnect);
 
-  return () => {
-    socket.off("connect", handleConnect);
-  };
-}, []);
+    return () => {
+      socket.off("connect", handleConnect);
+    };
+  }, []);
 
   useEffect(() => {
     const handleOnlineUsers = (count) => {
@@ -83,40 +82,50 @@ function Jokes() {
 
   // infinite scroll effect
   useEffect(() => {
-  const handleScroll = () => {
-    if (
-      mode === "latest" &&
-      window.innerHeight + document.documentElement.scrollTop + 100 >=
-        document.documentElement.scrollHeight &&
-      hasMore &&
-      !loading &&
-      !fetchingRef.current
-    ) {
+    let timeout;
+
+    const handleScroll = () => {
+      clearTimeout(timeout);
+
+      timeout = setTimeout(() => {
+        if (
+          mode === "latest" &&
+          window.innerHeight + document.documentElement.scrollTop + 100 >=
+            document.documentElement.scrollHeight &&
+          hasMore &&
+          !loading &&
+          !fetchingRef.current
+        ) {
+          fetchJokes();
+        }
+      }, 200); // debounce
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [hasMore, loading, mode]);
+
+  useEffect(() => {
+    const isScrollable =
+      document.documentElement.scrollHeight > window.innerHeight;
+
+    if (!isScrollable && hasMore && !loading && !fetchingRef.current) {
       fetchJokes();
     }
-  };
-
-  window.addEventListener("scroll", handleScroll);
-  return () => window.removeEventListener("scroll", handleScroll);
-}, [hasMore, loading, mode]);
-
-useEffect(() => {
-  const isScrollable =
-    document.documentElement.scrollHeight > window.innerHeight;
-
-  if (!isScrollable && hasMore && !loading && !fetchingRef.current) {
-    fetchJokes();
-  }
-}, [jokes]);
+  }, [jokes]);
 
   useEffect(() => {
     const handleCommentCount = (data) => {
       setJokes((prev) =>
-        prev.map((j) =>
-          Number(j.id) === Number(data.jokeId)
-            ? { ...j, comments_count: data.commentsCount }
-            : j,
-        ),
+        prev.map((j) => {
+          if (Number(j.id) === Number(data.jokeId)) {
+            return {
+              ...j,
+              comments_count: data.commentsCount,
+            };
+          }
+          return j;
+        }),
       );
     };
 
@@ -124,7 +133,6 @@ useEffect(() => {
 
     return () => socket.off("commentCountUpdated", handleCommentCount);
   }, []);
-
 
   // socket listener code
   useEffect(() => {
@@ -148,40 +156,39 @@ useEffect(() => {
 
   const userId = localStorage.getItem("userId");
 
-  
   const handleGetAll = () => {
-  setError(null);
-  setMode("latest");
-  setJokes([]);
-  setCursor(null);
-  setHasMore(true);   
-};
+    setError(null);
+    setMode("latest");
+    setJokes([]);
+    setCursor(null);
+    setHasMore(true);
+  };
 
   // Get All Jokes
   const fetchJokes = async () => {
-  if (loading || !hasMore || fetchingRef.current) return;
+    if (loading || !hasMore || fetchingRef.current) return;
 
-  fetchingRef.current = true;
-  setLoading(true);
+    fetchingRef.current = true;
+    setLoading(true);
 
-  try {
-    const data = await getAllJokes(cursor);
+    try {
+      const data = await getAllJokes(cursor);
 
-    const incoming = Array.isArray(data.jokes) ? data.jokes : [];
+      const incoming = Array.isArray(data.jokes) ? data.jokes : [];
 
-    setJokes((prev) => [...prev, ...incoming]);
+      setJokes((prev) => [...prev, ...incoming]);
 
-    setHasMore(data.hasMore);
-    if (data.nextCursor) {
-    setCursor(data.nextCursor);
-    }   //IMPORTANT
-  } catch (err) {
-    setError(err.message);
-  } finally {
-    setLoading(false);
-    fetchingRef.current = false;
-  }
-};
+      setHasMore(data.hasMore);
+      if (data.nextCursor) {
+        setCursor(data.nextCursor);
+      } //IMPORTANT
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+      fetchingRef.current = false;
+    }
+  };
   // Get Random Joke
   const handleRandom = async () => {
     setLoading(true);

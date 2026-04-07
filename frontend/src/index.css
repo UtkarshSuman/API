@@ -94,6 +94,28 @@ body {
   flex-shrink: 0;
 }
  
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.online-badge {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--green-soft);
+  background: rgba(58, 154, 110, 0.08);
+  border: 1px solid rgba(58, 154, 110, 0.25);
+  padding: 4px 10px;
+  border-radius: 20px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  min-width: 75px;
+  font-variant-numeric: tabular-nums;
+}
+
 .auth-group {
   display: flex;
   gap: 8px;
@@ -263,9 +285,7 @@ body {
   text-align: left !important;
 }
  
-/* ═══════════════════════════════════════
-   JOKE CARDS
-═══════════════════════════════════════ */
+/* JOKES CARD */
 .jokes-list {
   list-style: none;
   margin-top: 1.5rem;
@@ -482,16 +502,19 @@ body {
   background: var(--cream-dark);
 }
  
-/* ═══════════════════════════════════════
-   COMMENT SECTION
-═══════════════════════════════════════ */
 
-/* ═══════════════════════════════════════
-   RESPONSIVE
-═══════════════════════════════════════ */
 @media (max-width: 600px) {
   .jokes-container {
     padding: 1.25rem 1rem 3rem;
+  }
+  .nav-right {
+    gap: 6px;
+  }
+  .online-badge {
+    font-size: 0.7rem;
+    padding: 3px 8px;
+    font-variant-numeric: tabular-nums;
+    max-width: 75px;
   }
   .top-nav {
     padding: 0 1rem;

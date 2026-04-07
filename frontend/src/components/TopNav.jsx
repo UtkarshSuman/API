@@ -9,27 +9,22 @@ export default function TopNav({ isLoggedIn }) {
 
   // socket listning not connecting or disconnecting
   useEffect(() => {
-  const handleOnlineUsers = (count) => {
-    setOnlineUsers(count);
-  };
+    const handleOnlineUsers = (count) => {
+      setOnlineUsers(count);
+    };
 
-  socket.on("onlineUsers", handleOnlineUsers);
+    socket.on("onlineUsers", handleOnlineUsers);
 
-  return () => {
-    socket.off("onlineUsers", handleOnlineUsers);
-  };
-}, []);
+    return () => {
+      socket.off("onlineUsers", handleOnlineUsers);
+    };
+  }, []);
 
-  
-
-  // Logout 
+  // Logout
   const handleLogout = () => {
     const userId = localStorage.getItem("userId");
 
-    if (userId) {
-    socket.emit("userOffline", userId); 
-    } 
-    socket.disconnect(); 
+    socket.disconnect();
 
     logoutUser();
     navigate("/login", { replace: true });
@@ -40,23 +35,24 @@ export default function TopNav({ isLoggedIn }) {
       <div className="brand">
         <span className="brand-dot" />
         JokeBox
-        <p>👥 Online Users: {onlineUsers}</p>
       </div>
 
-      <div className="auth-group">
-        <button
-          className="btn-auth btn-login"
-          onClick={() => navigate("/login")}
-        >
-          Login
-        </button>
+      {/* RIGHT SIDE */}
+      <div className="nav-right">
+        <div className="online-badge">{onlineUsers} Online</div>
 
-        <button
-          className="btn-auth btn-logout"
-          onClick={handleLogout}
-        >
-          Logout
-        </button>
+        <div className="auth-group">
+          <button
+            className="btn-auth btn-login"
+            onClick={() => navigate("/login")}
+          >
+            Login
+          </button>
+
+          <button className="btn-auth btn-logout" onClick={handleLogout}>
+            Logout
+          </button>
+        </div>
       </div>
     </nav>
   );
