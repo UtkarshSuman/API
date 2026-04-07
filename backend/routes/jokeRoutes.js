@@ -463,18 +463,9 @@ router.post("/:id/comments", protect, async (req, res) => {
     }
     const io = req.app.get("io");
 
-    // get updated count
-    const countResult = await pool.query(
-      "SELECT COUNT(*) FROM comments WHERE joke_id = $1",
-      [jokeId]
-    );
-
-    const commentsCount = parseInt(countResult.rows[0].count);
-
-    // emit update
     io.emit("commentCountUpdated", {
       jokeId,
-      commentsCount,
+      increment: 1
     });
 
     io.to(`joke_${jokeId}`).emit("newComment", {
@@ -482,7 +473,7 @@ router.post("/:id/comments", protect, async (req, res) => {
       comment: fullComment.rows[0]
     });
 
-    
+
 
   } catch (err) {
     console.error("Add comment error:", err);
