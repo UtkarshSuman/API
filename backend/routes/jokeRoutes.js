@@ -288,19 +288,32 @@ router.put("/:id", protect, async (req, res) => {
       return res.status(403).json({ message: "Unauthorized" });
     }
 
-    const updatedJoke = await pool.query(
-      "UPDATE jokes SET content = $1 WHERE id = $2 RETURNING *",
+     await pool.query(
+      "UPDATE jokes SET content = $1 WHERE id = $2",
       [content.trim(), jokeId]
     );
 
-    res.json(updatedJoke.rows[0]);
+    // return full data
+    const fullJoke = await pool.query(`
+      SELECT j.id,
+             j.content,
+             j.created_at,
+             j.likes,
+             u.name AS author_name,
+             u.email AS author_email,
+             COUNT(c.id)::int AS comments_count
+      FROM jokes j
+      JOIN users u ON j.author_id = u.id
+      LEFT JOIN comments c ON j.id = c.joke_id
+      WHERE j.id = $1
+      GROUP BY j.id, u.name, u.email
+    `, [jokeId]);
+
+    res.json(fullJoke.rows[0]);
 
   } catch (err) {
-
     console.error("Edit joke error:", err);
-
     res.status(500).json({ message: err.message });
-
   }
 });
 
