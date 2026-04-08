@@ -241,8 +241,8 @@ router.delete("/:id", protect, async (req, res) => {
 
     const joke = result.rows[0];
 
-    if (joke.author_id !== req.user.id && req.user.role !== "admin") {
-      return res.status(403).json({ message: "Not authorized to delete" });
+    if (Number(joke.author_id) !== Number(req.user.id)) {
+      return res.status(403).json({ message: "Only author can delete this joke" });
     }
 
     await pool.query("DELETE FROM jokes WHERE id = $1", [id]);
@@ -288,7 +288,7 @@ router.put("/:id", protect, async (req, res) => {
       return res.status(403).json({ message: "Unauthorized" });
     }
 
-     await pool.query(
+    await pool.query(
       "UPDATE jokes SET content = $1 WHERE id = $2",
       [content.trim(), jokeId]
     );
@@ -299,6 +299,7 @@ router.put("/:id", protect, async (req, res) => {
              j.content,
              j.created_at,
              j.likes,
+             j.auther_id,
              u.name AS author_name,
              u.email AS author_email,
              COUNT(c.id)::int AS comments_count

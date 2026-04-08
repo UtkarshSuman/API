@@ -10,16 +10,83 @@
 
 A **full-stack real-time web application** where users can **register, login, create jokes, edit them, like/unlike jokes, and see live updates instantly**.
 
-The project demonstrates:
+# 📌 Features
 
-- REST API development
-- JWT authentication
-- PostgreSQL database design
-- Real-time updates using WebSockets
-- Secure backend practices
-- Full stack deployment
+## 🔐 Authentication
+- User registration & login
+- JWT-based authentication
+- Secure password hashing with **bcrypt**
+- Role-based authorization (admin / user)
+- API rate limiting
 
 ---
+
+## 🤣 Joke Management
+- View all jokes
+- Cursor-based pagination (infinite scroll)
+- Fetch random joke
+- Fetch joke by ID
+- Add, edit, delete jokes
+
+---
+
+## 💬 Comment System (NEW)
+- Add comments on jokes
+- Real-time comment updates
+- Live comment count sync
+- Efficient backend handling (non-blocking)
+
+---
+
+## ❤️ Like / Unlike System
+- Toggle like/unlike
+- Prevent duplicate likes
+- Real-time like updates using Socket.IO
+
+---
+
+## ⚡ Real-Time Features (Socket.IO)
+- ❤️ Live like updates
+- 💬 Live comments
+- 🔔 Comment count updates
+- 👥 Online users counter
+
+---
+
+## 👥 Online Users Counter
+Displays how many users are currently online: 5 Online
+
+---
+
+## 📧 Email Notifications 
+- Email sent when someone comments on your joke
+- Powered by **Resend API (production-ready)**
+- Runs in background (non-blocking, no API delay)
+
+---
+
+## 📦 Performance Optimizations
+- 🚀 Cursor-based pagination (no offset issues)
+- ⚡ Debounced infinite scroll
+- 🔄 Optimistic UI updates
+- 🧵 Non-blocking async tasks (email + sockets)
+- 📉 Reduced API latency
+
+---
+
+## 🏗 Architecture
+
+Frontend (React + Vite)
+        │
+        │ HTTP / WebSocket
+        ▼
+Backend (Node.js + Express + Socket.IO)
+        │
+        │ SQL Queries
+        ▼
+PostgreSQL Database
+
+
 
 # 🚀 Live Demo
 
@@ -31,94 +98,31 @@ https://jokesapi-24iv.onrender.com
 
 ---
 
-<!-- # 🎥 Demo
-
-Add a short demo GIF here.
-
-Example:
-
-
-![Demo](demo.gif) -->
-
-
----
 
 # 🖼 Screenshots
 
-### Home Page
+### 🏠 Home & Feed
+<p align="center">
+  <img src="screenshots/jokeall.png" width="60%" />
+</p>
 
+### ❤️ Like System
+<p align="center">
+  <img src="screenshots/jokelike.png" width="60%" />
+</p>
 
-![Home](screenshots/jokeall.png)
+### ✏️ Edit Joke
+<p align="center">
+  <img src="screenshots/jokeedit.png" width="60%" />
+</p>
 
-
-### Like System
-
-
-![Like](screenshots/jokelike.png)
-
-### Joke Edit
-
-
-![Edit Joke](screenshots/jokeedit.png)
-
-### Add Joke
-
-
-![Add Joke](screenshots/jokeadd.png)
-
+### ➕ Add Joke
+<p align="center">
+  <img src="screenshots/jokeadd.png" width="60%" />
+</p>
 
 ---
 
-# 📌 Features
-
-# 🔐 Authentication
-
-- User registration
-- User login
-- JWT based authentication
-- Secure password hashing with **bcrypt**
-- Role-based authorization (admin / user)
-
----
-
-# 🤣 Joke Management
-
-Users can:
-
-- View all jokes
-- Fetch a random joke
-- View joke by ID
-- Add new jokes
-- Edit their own jokes
-- Delete jokes (author or admin)
-
----
-
-# ✏️ Author-Only Edit Protection
-
-Only the **author of the joke** can edit it.
-
-Backend validation example:
-
-```javascript
-if (Number(joke.author_id) !== Number(req.user.id)) {
-  return res.status(403).json({ message: "Unauthorized" });
-}
-```
-
-Frontend also blocks unauthorized editing attempts.
-
----
-
-# ❤️ Like / Unlike System
-
-Users can **like or unlike jokes**.
-
-Click again to remove the like.
-
-This prevents **spam liking**.
-
----
 
 # 🗄 Likes Table (Prevents Duplicate Likes)
 
@@ -189,27 +193,6 @@ io.on("connection", (socket) => {
 
 ---
 
-# 🛡 Security
-
-Security measures implemented:
-
-- JWT authentication
-- Password hashing with bcrypt
-- Protected routes
-- Role-based access control
-- **API rate limiting**
-
-Example rate limiter:
-
-```javascript
-const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-});
-```
-
----
-
 # 🏗 Architecture
 
 ```
@@ -249,6 +232,11 @@ PostgreSQL Database
 
 - PostgreSQL
 
+## Email Service 
+
+- Resend API
+
+
 ---
 
 # 🌐 Deployment
@@ -286,6 +274,20 @@ CREATE TABLE jokes (
   content TEXT NOT NULL,
   author_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
   likes INTEGER DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+---
+
+## Comments Table 
+
+```sql
+CREATE TABLE comments (
+  id SERIAL PRIMARY KEY,
+  joke_id INTEGER REFERENCES jokes(id) ON DELETE CASCADE,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  comment TEXT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 ```
@@ -438,20 +440,46 @@ API
 │
 ├── backend
 │   ├── config
-│   │   └── db.js
-│   ├── routes
+│   │   └── db.js                  
+│   │
+│   ├── routes                   
 │   │   ├── authRoutes.js
 │   │   └── jokeRoutes.js
-│   ├── middleware
-│   │   └── authMiddleware.js
-│   └── index.js
+│   │
+│   ├── middleware                
+│   │   └── authMiddleware.js  
+│   │
+│   ├── utils                                 
+│   │   └── mailer.js 
+│   │
+│   ├── .env
+│   ├── package.json
+│   └── index.js                 
 │
 ├── frontend
-│   ├── components
-│   ├── pages
-│   ├── services
-│   ├── socket.js
-│   └── App.jsx
+│   ├── components               
+│   │   ├── TopNav.jsx
+│   │   ├── CommentSection.jsx
+│   │   └── Jokes.jsx
+│   │
+│   ├── pages                     
+│   │   ├── Home.jsx
+│   │   ├── Login.jsx
+│   │   └── Register.jsx
+│   │
+│   ├── services                  
+│   │   └── api.js
+│   │
+│   ├── socket.js            
+│   ├── App.jsx
+│   ├── main.jsx
+│   └── index.css                    
+│       
+│
+├── screenshots
+│
+├── README.md
+└── .gitignore
 ```
 
 ---
@@ -462,6 +490,9 @@ Through this project I learned:
 
 - Building REST APIs using Express
 - Implementing JWT authentication
+- Cursor-based pagination (industry-level)
+- Async background processing (non-blocking APIs)
+- Email service integration (Resend)
 - PostgreSQL schema design
 - Real-time communication using WebSockets
 - Preventing duplicate likes using database constraints
@@ -472,12 +503,10 @@ Through this project I learned:
 
 # 📌 Future Improvements
 
-- Prevent multiple likes across devices
-- Add comments to jokes
-- Trending jokes algorithm
-- Pagination
-- User profiles
-- Admin dashboard
+- 🔔 In-app notifications
+- 🧵 Threaded comments (replies)
+- 🔍 Search & filters
+- 👤 User profiles
 
 ---
 

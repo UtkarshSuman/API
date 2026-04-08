@@ -419,88 +419,101 @@ function Jokes() {
         {/* Joke List */}
         <ul className="jokes-list">
           {Array.isArray(jokes) &&
-            jokes.map((j, index) => (
-              <li key={j.id} className="joke-card">
-                {editingId === j.id ? (
-                  <>
-                    <input
-                      value={editText}
-                      onChange={(e) => setEditText(e.target.value)}
-                    />
+            jokes.map((j, index) => {
+              const isAuthor =
+                localStorage.getItem("userId") === String(j.author_id);
 
-                    <button onClick={() => handleUpdate(j.id)}>Save</button>
+              return (
+                <li key={j.id} className="joke-card">
+                  {editingId === j.id ? (
+                    <>
+                      <input
+                        value={editText}
+                        onChange={(e) => setEditText(e.target.value)}
+                      />
 
-                    <button onClick={() => setEditingId(null)}>Cancel</button>
-                  </>
-                ) : (
-                  <>
-                    <p>{j.content}</p>
+                      <button onClick={() => handleUpdate(j.id)}>Save</button>
 
-                    {j.author_name && <small>By: {j.author_name}</small>}
+                      <button onClick={() => setEditingId(null)}>Cancel</button>
+                    </>
+                  ) : (
+                    <>
+                      <p>{j.content}</p>
 
-                    <div className="joke-actions">
-                      <div className="like-container">
+                      <small>
+  By: {j.author_name}
+  {isAuthor && <span className="you-badge">You</span>}
+</small>
+
+                      <div className="joke-actions">
+                        <div className="like-container">
+                          <button
+                            className="like-btn"
+                            onClick={() => handleLike(j.id)}
+                          >
+                            ❤️ {j.likes ?? 0}
+                          </button>
+
+                          {activeLikeId === j.id &&
+                            hearts.map((h) => (
+                              <span
+                                key={h.id}
+                                className="floating-heart"
+                                style={{ left: `${h.left}px` }}
+                              >
+                                ❤️
+                              </span>
+                            ))}
+                        </div>
+
+                        {/* 💬 COMMENT BUTTON */}
                         <button
-                          className="like-btn"
-                          onClick={() => handleLike(j.id)}
+                          onClick={() =>
+                            setOpenComments(openComments === j.id ? null : j.id)
+                          }
                         >
-                          ❤️ {j.likes ?? 0}
+                          💬{j.comments_count ?? 0}
                         </button>
 
-                        {activeLikeId === j.id &&
-                          hearts.map((h) => (
-                            <span
-                              key={h.id}
-                              className="floating-heart"
-                              style={{ left: `${h.left}px` }}
-                            >
-                              ❤️
-                            </span>
-                          ))}
+                        {(localStorage.getItem("role") === "admin" ||
+                          isAuthor) && (
+                          <>
+                            <div title={!isAuthor ? "Only author can edit" : ""}>
+  <button
+    className="edit-btn"
+    onClick={() => handleEdit(j)}
+    disabled={!isAuthor}
+  >
+    Edit
+  </button>
+</div>
+
+                            <div title={!isAuthor ? "Only author can delete" : ""}>
+  <button
+    className="delete-btn"
+    onClick={() => handleDelete(j.id)}
+    disabled={!isAuthor}
+  >
+    Delete
+  </button>
+</div>
+                          </>
+                        )}
                       </div>
 
-                      {/* 💬 COMMENT BUTTON */}
-                      <button
-                        onClick={() =>
-                          setOpenComments(openComments === j.id ? null : j.id)
-                        }
-                      >
-                        💬{j.comments_count ?? 0}
-                      </button>
-
-                      {(localStorage.getItem("role") === "admin" ||
-                        localStorage.getItem("username") ===
-                          j.author_email) && (
-                        <>
-                          <button
-                            className="edit-btn"
-                            onClick={() => handleEdit(j)}
-                          >
-                            Edit
-                          </button>
-
-                          <button
-                            className="delete-btn"
-                            onClick={() => handleDelete(j.id)}
-                          >
-                            Delete
-                          </button>
-                        </>
+                      {openComments === j.id && (
+                        <CommentSection
+                          jokeId={j.id}
+                          token={localStorage.getItem("token")}
+                          cachedComments={commentsMap[j.id]}
+                          setCommentsMap={setCommentsMap}
+                        />
                       )}
-                    </div>
-
-                    {openComments === j.id && (
-                      <CommentSection
-                        jokeId={j.id}
-                        token={localStorage.getItem("token")}
-                        cachedComments={commentsMap[j.id]}
-                        setCommentsMap={setCommentsMap}
-                      />
-                    )}
-                  </>
-                )}
-              </li>
-            ))}
+                    </>
+                  )}
+                </li>
+              );
+            })}
         </ul>
         {/* loading(pagination) */}
         {loading && jokes.length > 0 && (
