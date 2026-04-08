@@ -1,7 +1,7 @@
 import express from "express";
 import pool from "../config/db.js";
 import protect from "../middleware/authMiddleware.js";
-import { transporter } from "../utils/mailer.js";
+import { sendCommentEmail } from "../utils/mailer.js";
 
 const router = express.Router();
 
@@ -414,10 +414,10 @@ router.post("/:id/comments", protect, async (req, res) => {
       [newComment.rows[0].id]
     );
 
-    // ✅ send response instantly
+    // send response instantly
     res.json(fullComment.rows[0]);
 
-    // ✅ async background work (clean)
+    // async background work 
     (async () => {
       try {
         const jokeOwner = await pool.query(
@@ -432,22 +432,17 @@ router.post("/:id/comments", protect, async (req, res) => {
 
         const author = jokeOwner.rows[0];
 
-        // ✅ non-blocking email
+        // non-blocking email
         if (author.email !== req.user.email) {
-          transporter.sendMail({
-            from: process.env.EMAIL_USER,
+          sendCommentEmail({
             to: author.email,
-            subject: "New Comment on Your Joke 😂",
-            html: `
-              <h3>Hey ${author.name}!</h3>
-              <p>Someone commented on your joke:</p>
-              <blockquote>${author.content}</blockquote>
-              <p><b>Comment:</b> ${comment}</p>
-            `,
-          }).catch(err => console.error("Email error:", err));
+            name: author.name,
+            content: author.content,
+            comment,
+          });
         }
 
-        // ✅ accurate count
+        // accurate count
         const countResult = await pool.query(
           "SELECT COUNT(*) FROM comments WHERE joke_id = $1",
           [jokeId]
@@ -475,5 +470,5 @@ router.post("/:id/comments", protect, async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
-  
+
 export default router; 
