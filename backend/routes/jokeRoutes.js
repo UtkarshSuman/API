@@ -21,6 +21,7 @@ router.get("/", async (req, res) => {
     jokes.content,
     jokes.created_at,
     jokes.likes,
+    jokes.author_id,
     users.name AS author_name,
     users.email AS author_email,
     (
@@ -95,6 +96,7 @@ router.get("/random", async (req, res) => {
               jokes.content,
               jokes.created_at,
               jokes.likes,
+              jokes.author_id,
               users.name AS author_name,
               COUNT(c.id)::int AS comments_count
        FROM jokes
@@ -125,6 +127,7 @@ router.get("/trending", async (req, res) => {
         j.content,
         j.created_at,
         j.likes,
+        j.author_id,
         u.name AS author_name,
         u.email AS author_email,
         COUNT(c.id)::int AS comments_count,
@@ -161,6 +164,7 @@ router.get("/:id", async (req, res) => {
               jokes.content,
               jokes.created_at,
               jokes.likes,
+              jokes.author_id,
               users.name AS author_name,
               users.email AS author_email,
               COUNT(c.id)::int AS comments_count
