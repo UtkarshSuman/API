@@ -299,7 +299,7 @@ router.put("/:id", protect, async (req, res) => {
              j.content,
              j.created_at,
              j.likes,
-             j.auther_id,
+             j.author_id,
              u.name AS author_name,
              u.email AS author_email,
              COUNT(c.id)::int AS comments_count
