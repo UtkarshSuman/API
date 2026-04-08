@@ -371,7 +371,7 @@ function Jokes() {
   return (
     <div className="page-bg">
       <TopNav />
-      <h1 className="welcome-text">Welcome to Jokes App 🎉</h1>
+      <h1 className="welcome-text">Welcome to Jokes App (^ _ ^)</h1>
 
       {/* <button onClick={handleLogout} className="logout-btn">
        Logout
@@ -381,7 +381,7 @@ function Jokes() {
       </button> */}
 
       <div className="jokes-container">
-        <h2>😂 Jokes Corner</h2>
+        <h2>😂 Jokes Corner </h2>
 
         <div className="button-group">
           <button onClick={handleGetAll}>Get All Jokes</button>
@@ -502,6 +502,17 @@ function Jokes() {
               </li>
             ))}
         </ul>
+        {/* loading(pagination) */}
+        {loading && jokes.length > 0 && (
+          <p className="loading-text">Loading more jokes...</p>
+        )}
+
+        {/* END MESSAGE */}
+        {!hasMore && !loading && jokes.length > 0 && (
+          <p className="end-message">
+            :) That's all folks — no more jokes left!
+          </p>
+        )}
       </div>
     </div>
   );

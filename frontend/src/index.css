@@ -9,6 +9,7 @@
   --ink-muted:     #6b6259;
   --ink-faint:     #b5aca0;
   --amber:         #e07a2f;
+  --bg-dark:       #0b0f19;
   --amber-light:   #fdf0e3;
   --amber-dark:    #b55e1c;
   --red-soft:      #e05252;
@@ -406,6 +407,24 @@ body {
   color: var(--red-soft);
 }
  
+.end-message {
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--ink-muted);
+  margin-top: 1.5rem;
+  padding: 12px;
+  border-top: 1px dashed var(--border);
+  opacity: 0.9;
+}
+
+.loading-text {
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--ink-faint);
+  margin-top: 1rem;
+}
+
+
 /* ─── Floating Hearts Animation ─── */
 .floating-heart {
   position: absolute;
