@@ -69,7 +69,7 @@ export default function CommentSection({ jokeId, token, cachedComments, setComme
     handleLoadComments();
   }
 
-  socket.emit("joinJokeRoom", `joke_${jokeId}`);
+  socket.emit("joinJokeRoom", jokeId);
 
   // Listen for new comments (NO DUPLICATES)
     const handleNewComment = (data) => {

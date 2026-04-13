@@ -376,6 +376,26 @@ router.post("/:id/like", protect, async (req, res) => {
       likes: fullJoke.rows[0].likes
     });
 
+
+
+
+// get joke author
+const jokeOwner = await pool.query(
+  "SELECT author_id FROM jokes WHERE id=$1",
+  [jokeId]
+);
+
+const authorId = jokeOwner.rows[0].author_id;
+
+// DO NOT notify self
+if (authorId !== req.user.id) {
+  io.to(`user_${authorId}`).emit("notification", {
+    type: "LIKE",
+    message: `${req.user.name} liked your joke ❤️`,
+    jokeId,
+  });
+}
+
     res.json(fullJoke.rows[0]);
 
   } catch (err) {
@@ -477,6 +497,16 @@ router.post("/:id/comments", protect, async (req, res) => {
           jokeId,
           comment: fullComment.rows[0],
         });
+
+        if (author.email !== req.user.email) {
+  const io = req.app.get("io");
+
+  io.to(`user_${author.id}`).emit("notification", {
+    type: "COMMENT",
+    message: `${req.user.name} commented: "${comment}"`,
+    jokeId,
+  });
+}
 
       } catch (err) {
         console.error("Async task error:", err);

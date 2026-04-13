@@ -14,6 +14,7 @@ import {
   normalizeJoke,
 } from "../services/api.js";
 import TopNav from "./TopNav.jsx";
+import "./CommentSection.css";
 import CommentSection from "./CommentSection.jsx";
 
 function Jokes() {
@@ -43,42 +44,17 @@ function Jokes() {
     }
   }, [mode]);
 
-  useEffect(() => {
-    const userId = localStorage.getItem("userId");
-    if (!userId) return;
-
-    if (!socket.connected) {
-      socket.connect();
-    }
-
-    const handleConnect = () => {
-      socket.emit("userOnline", userId);
-    };
-
-    socket.on("connect", handleConnect);
-
-    return () => {
-      socket.off("connect", handleConnect);
-    };
-  }, []);
+  // Join rooms when jokes load
+  const joinedRooms = useRef(new Set());
 
   useEffect(() => {
-    const handleOnlineUsers = (count) => {
-      console.log("Online Users:", count);
-    };
-
-    socket.on("onlineUsers", handleOnlineUsers);
-
-    return () => {
-      socket.off("onlineUsers", handleOnlineUsers);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (jokeId) {
-      socket.emit("joinJokeRoom", jokeId);
-    }
-  }, [jokeId]);
+    jokes.forEach((j) => {
+      if (!joinedRooms.current.has(j.id)) {
+        socket.emit("joinJokeRoom", j.id);
+        joinedRooms.current.add(j.id);
+      }
+    });
+  }, [jokes]);
 
   // infinite scroll effect
   useEffect(() => {
@@ -250,6 +226,7 @@ function Jokes() {
       id: Date.now(),
       content: newJoke,
       author_name: localStorage.getItem("name") || "You",
+      author_id: Number(localStorage.getItem("userId")),
       comments_count: 0,
       likes: 0,
     });
@@ -276,9 +253,10 @@ function Jokes() {
   // edit joke
   const handleEdit = (joke) => {
     const role = localStorage.getItem("role");
-    const username = localStorage.getItem("username");
+    const isAuthor =
+      String(localStorage.getItem("userId")) === String(joke.author_id);
 
-    if (role !== "admin" && username !== joke.author_email) {
+    if (role !== "admin" && !isAuthor) {
       alert("Only the author can edit this joke");
       return;
     }
@@ -421,7 +399,9 @@ function Jokes() {
           {Array.isArray(jokes) &&
             jokes.map((j, index) => {
               const isAuthor =
-                localStorage.getItem("userId") === String(j.author_id);
+                String(localStorage.getItem("userId")) === String(j.author_id);
+              const isAdmin = localStorage.getItem("role") === "admin";
+              const canManage = isAuthor || isAdmin;
 
               return (
                 <li key={j.id} className="joke-card">
@@ -441,9 +421,9 @@ function Jokes() {
                       <p>{j.content}</p>
 
                       <small>
-  By: {j.author_name}
-  {isAuthor && <span className="you-badge">You</span>}
-</small>
+                        By: {j.author_name}
+                        {isAuthor && <span className="you-badge">You</span>}
+                      </small>
 
                       <div className="joke-actions">
                         <div className="like-container">
@@ -475,30 +455,39 @@ function Jokes() {
                           💬{j.comments_count ?? 0}
                         </button>
 
-                        {(localStorage.getItem("role") === "admin" ||
-                          isAuthor) && (
-                          <>
-                            <div title={!isAuthor ? "Only author can edit" : ""}>
-  <button
-    className="edit-btn"
-    onClick={() => handleEdit(j)}
-    disabled={!isAuthor}
-  >
-    Edit
-  </button>
-</div>
+                        <>
+                          {canManage && (
+                            <>
+                              <div
+                                title={!canManage ? "Only author can edit" : ""}
+                              >
+                                <button
+                                  className="edit-btn"
+                                  onClick={() => handleEdit(j)}
+                                  disabled={!canManage}
+                                  title={!canManage ? "Only author can edit" : ""}
+                                >
+                                  Edit
+                                </button>
+                              </div>
 
-                            <div title={!isAuthor ? "Only author can delete" : ""}>
-  <button
-    className="delete-btn"
-    onClick={() => handleDelete(j.id)}
-    disabled={!isAuthor}
-  >
-    Delete
-  </button>
-</div>
-                          </>
-                        )}
+                              <div
+                                title={
+                                  !canManage ? "Only author can delete" : ""
+                                }
+                              >
+                                <button
+                                  className="delete-btn"
+                                  onClick={() => handleDelete(j.id)}
+                                  disabled={!canManage}
+                                  title={!canManage ? "Only author can delete" : ""}
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </>
                       </div>
 
                       {openComments === j.id && (
@@ -541,3 +530,7 @@ export default Jokes;
   <CommentSection jokeId={joke.id} token={token} />
 )} */
 }
+
+
+// Delete joke  (with rollback)  ??
+// Comment fallback

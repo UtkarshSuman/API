@@ -36,34 +36,50 @@ const onlineUsers = new Map();
 
 io.on("connection", (socket) => {
 
-  socket.on("userOnline", (userId) => {
-    if (socket.userId) return; // prevent duplicate
+  // INIT USER (online + notifications)
+  socket.on("initUser", (userId) => {
+    if (!userId) return; // safety check
 
     socket.userId = userId;
 
-    // ensure only ONE entry per user
-    onlineUsers.set(userId, true);
+    // multi-tab safe count
+    const count = onlineUsers.get(userId) || 0;
+    onlineUsers.set(userId, count + 1);
+
+    // join personal notification room
+    socket.join(`user_${userId}`);
+
+    console.log(`User ${userId} connected (${count + 1})`);
 
     io.emit("onlineUsers", onlineUsers.size);
   });
 
-  socket.on("joinJokeRoom", (room) => {
-    socket.join(room);
+  // JOIN JOKE ROOM
+  socket.on("joinJokeRoom", (jokeId) => {
+    if (!jokeId) return;
+
+    socket.join(`joke_${jokeId}`);
   });
 
-  
+  socket.on("leaveJokeRoom", (jokeId) => {
+  socket.leave(`joke_${jokeId}`);
+});
 
+  // DISCONNECT
   socket.on("disconnect", () => {
-    if (socket.userId) {
-      const count = onlineUsers.get(socket.userId);
+    if (!socket.userId) return;
 
-      if (socket.userId) {
-        onlineUsers.delete(socket.userId);
-        io.emit("onlineUsers", onlineUsers.size);
-      }
+    const count = onlineUsers.get(socket.userId) || 0;
 
-      io.emit("onlineUsers", onlineUsers.size);
+    if (count <= 1) {
+      onlineUsers.delete(socket.userId);
+      console.log(`User ${socket.userId} offline`);
+    } else {
+      onlineUsers.set(socket.userId, count - 1);
+      console.log(`User ${socket.userId} still has ${count - 1} connections`);
     }
+
+    io.emit("onlineUsers", onlineUsers.size);
   });
 });
 
