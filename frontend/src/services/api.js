@@ -180,4 +180,30 @@ export const getTrendingJokes = async () => {
     : [];
 };
 
+
+// ================= NOTIFICATIONS =================
+
+export const getNotifications = async () => {
+  const { data } = await api.get("/api/notifications");
+  return data;
+};
+
+export const getNotificationCount = async () => {
+  const { data } = await api.get("/api/notifications/count");
+  return data.count;
+};
+
+export const markNotificationRead = async (id) => {
+  await api.put(`/api/notifications/${id}/read`);
+};
+
+export const markAllNotificationsRead = async () => {
+  await api.put("/api/notifications/read-all");
+};
+
+export const deleteNotification = async (id) => {
+  await api.delete(`/api/notifications/${id}`);
+};
+
+
 export default api;

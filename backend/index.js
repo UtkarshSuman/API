@@ -10,6 +10,7 @@ import rateLimit from "express-rate-limit";
 
 import authRoutes from "./routes/authRoutes.js";
 import jokeRoutes from "./routes/jokeRoutes.js";
+import notificationRoutes from "./routes/notificationRoutes.js";
 
 const app = express();
 
@@ -123,6 +124,7 @@ app.use(apiLimiter);
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/jokes", jokeRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 // Health Check
 app.get("/", (req, res) => {

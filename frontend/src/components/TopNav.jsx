@@ -3,6 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { logoutUser } from "../services/api";
 import "./CommentSection.css";
 import socket from "../socket";
+import {
+  getNotifications,
+  getNotificationCount,
+  markNotificationRead,
+  markAllNotificationsRead,
+  deleteNotification,
+} from "../services/api";
 
 export default function TopNav({ isLoggedIn }) {
   const navigate = useNavigate();
@@ -34,23 +41,65 @@ export default function TopNav({ isLoggedIn }) {
     navigate("/login", { replace: true });
   };
 
-  const handleBellClick = () => {
+  const handleBellClick = async () => {
     setOpen(!open);
-    setUnreadCount(0);
+
+    if (!open && unreadCount > 0) {
+      await markAllNotificationsRead();
+      setUnreadCount(0);
+    }
   };
 
-
+  // initial fetch
   useEffect(() => {
-  socket.off("notification"); // prevent duplicate listeners
+    const init = async () => {
+      const data = await getNotifications();
+      const count = await getNotificationCount();
 
-  socket.on("notification", (data) => {
-    setNotifications((prev) => [data, ...prev]);
-    setUnreadCount((prev) => prev + 1);
-  });
+      setNotifications(data);
+      setUnreadCount(count);
+    };
 
-  return () => socket.off("notification");
+    init();
   }, []);
 
+  useEffect(() => {
+    socket.off("notification"); // prevent duplicate listeners
+    socket.on("notification", (data) => {
+      setNotifications((prev) => [data, ...prev]);
+    });
+
+    socket.on("notificationCount", (data) => {
+      setUnreadCount(data.count);
+    });
+
+    return () => {
+      socket.off("notification");
+      socket.off("notificationCount");
+    };
+  }, []);
+
+  const handleNotificationClick = async (n) => {
+    if (!n.is_read) {
+      await markNotificationRead(n.id);
+
+      setNotifications((prev) =>
+        prev.map((item) =>
+          item.id === n.id ? { ...item, is_read: true } : item,
+        ),
+      );
+
+      setUnreadCount((prev) => Math.max(prev - 1, 0));
+    }
+
+    navigate(`/joke/${n.joke_id}`);
+  };
+
+  const handleDelete = async (id) => {
+    await deleteNotification(id);
+
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  };
 
   return (
     <nav className="top-nav">
@@ -86,11 +135,19 @@ export default function TopNav({ isLoggedIn }) {
                 {notifications.length === 0 ? (
                   <p>No notifications</p>
                 ) : (
-                  notifications.map((n, i) => (
-                    <div key={i} className="notification-item"
-                    onClick={() => navigate(`/joke/${n.jokeId}`)}
-                    >
-                      {n.message}
+                  notifications.map((n) => (
+                    <div key={n.id} className="notification-item">
+                      <div
+                        onClick={() => handleNotificationClick(n)}
+                        style={{
+                          cursor: "pointer",
+                          opacity: n.is_read ? 0.6 : 1,
+                        }}
+                      >
+                        {n.message}
+                      </div>
+
+                      <button onClick={() => handleDelete(n.id)}>❌</button>
                     </div>
                   ))
                 )}
