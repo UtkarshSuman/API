@@ -376,29 +376,29 @@ router.post("/:id/like", protect, async (req, res) => {
       likes: fullJoke.rows[0].likes
     });
 
-// get joke author
-const jokeOwner = await pool.query(
-  "SELECT author_id FROM jokes WHERE id=$1",
-  [jokeId]
-);
+    // get joke author
+    const jokeOwner = await pool.query(
+      "SELECT author_id FROM jokes WHERE id=$1",
+      [jokeId]
+    );
 
-const authorId = jokeOwner.rows[0].author_id;
+    const authorId = jokeOwner.rows[0].author_id;
 
-// DO NOT notify self
-if (authorId !== req.user.id) {
-  // Persist to DB
-  await pool.query(
-    `INSERT INTO notifications (user_id, type, message, joke_id)
+    // DO NOT notify self
+    if (authorId !== req.user.id) {
+      // Persist to DB
+      await pool.query(
+        `INSERT INTO notifications (user_id, type, message, joke_id)
      VALUES ($1, $2, $3, $4)`,
-    [authorId, "LIKE", `${req.user.name} liked your joke ❤️`, jokeId]
-  );
+        [authorId, "LIKE", `${req.user.name} liked your joke ❤️`, jokeId]
+      );
 
-  io.to(`user_${authorId}`).emit("notification", {
-    type: "LIKE",
-    message: `${req.user.name} liked your joke ❤️`,
-    jokeId,
-  });
-}
+      io.to(`user_${authorId}`).emit("notification", {
+        type: "LIKE",
+        message: `${req.user.name} liked your joke ❤️`,
+        jokeId,
+      });
+    }
 
     res.json(fullJoke.rows[0]);
 
@@ -503,28 +503,28 @@ router.post("/:id/comments", protect, async (req, res) => {
         });
 
         if (author.email !== req.user.email) {
-  await pool.query(
-    `INSERT INTO notifications (user_id, type, message, joke_id)
+          await pool.query(
+            `INSERT INTO notifications (user_id, type, message, joke_id)
      VALUES ($1, $2, $3, $4)`,
-    [author.id, "COMMENT", `${req.user.name} commented: "${comment.slice(0, 50)}"`, jokeId]
-  );
+            [author.id, "COMMENT", `${req.user.name} commented: "${comment.slice(0, 50)}"`, jokeId]
+          );
 
-  io.to(`user_${author.id}`).emit("notification", {
-    type: "COMMENT",
-    message: `${req.user.name} commented: "${comment.slice(0, 50)}"`,
-    jokeId,
-  });
-}
+          io.to(`user_${author.id}`).emit("notification", {
+            type: "COMMENT",
+            message: `${req.user.name} commented: "${comment.slice(0, 50)}"`,
+            jokeId,
+          });
+        }
 
-const countRes = await pool.query(
-  `SELECT COUNT(*) FROM notifications 
+        const countRes = await pool.query(
+          `SELECT COUNT(*) FROM notifications 
    WHERE user_id=$1 AND is_read=false`,
-  [author.id]
-);
+          [author.id]
+        );
 
-io.to(`user_${author.id}`).emit("notificationCount", {
-  count: Number(countRes.rows[0].count),
-});
+        io.to(`user_${author.id}`).emit("notificationCount", {
+          count: Number(countRes.rows[0].count),
+        });
 
       } catch (err) {
         console.error("Async task error:", err);
