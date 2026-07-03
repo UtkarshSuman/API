@@ -33,9 +33,21 @@ const io = new Server(server, {
 app.set("io", io);
 
 // track unique users with connection count
-const onlineUsers = new Map();
+const onlineUsers = new Map();      // logged-in users
+const visitors = new Map();         // all browsers
 
 io.on("connection", (socket) => {
+
+  socket.on("registerVisitor", (visitorId) => {
+  if (!visitorId) return;
+
+  socket.visitorId = visitorId;
+
+  const count = visitors.get(visitorId) || 0;
+  visitors.set(visitorId, count + 1);
+
+  io.emit("onlineUsers", visitors.size);
+});
 
   // INIT USER (online + notifications)
   socket.on("initUser", (userId) => {
@@ -52,7 +64,7 @@ io.on("connection", (socket) => {
 
     console.log(`User ${userId} connected (${count + 1})`);
 
-    io.emit("onlineUsers", io.engine.clientsCount);
+    // io.emit("onlineUsers", onlineUsers.size);
   });
 
   // JOIN JOKE ROOM
@@ -66,22 +78,47 @@ io.on("connection", (socket) => {
   socket.leave(`joke_${jokeId}`);
 });
 
+
+  socket.on("logout", () => {
+  if (!socket.userId) return;
+
+  const count = onlineUsers.get(socket.userId) || 0;
+
+  if (count <= 1) {
+    onlineUsers.delete(socket.userId);
+  } else {
+    onlineUsers.set(socket.userId, count - 1);
+  }
+
+  socket.userId = null;
+});
+
   // DISCONNECT
   socket.on("disconnect", () => {
-    if (!socket.userId) return;
+  // Remove visitor
+  if (socket.visitorId) {
+    const count = visitors.get(socket.visitorId) || 0;
 
+    if (count <= 1) {
+      visitors.delete(socket.visitorId);
+    } else {
+      visitors.set(socket.visitorId, count - 1);
+    }
+  }
+
+  // Remove logged-in user
+  if (socket.userId) {
     const count = onlineUsers.get(socket.userId) || 0;
 
     if (count <= 1) {
       onlineUsers.delete(socket.userId);
-      console.log(`User ${socket.userId} offline`);
     } else {
       onlineUsers.set(socket.userId, count - 1);
-      console.log(`User ${socket.userId} still has ${count - 1} connections`);
     }
+  }
 
-    io.emit("onlineUsers", onlineUsers.size);
-  });
+  io.emit("onlineUsers", visitors.size);
+});
 });
 
 // BETTER TO COUNT DYNAMICALLY AS WHEN SERVER RESTARTS,THE COUNT RESETS
