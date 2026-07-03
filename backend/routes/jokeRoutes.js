@@ -88,6 +88,15 @@ router.get("/", async (req, res) => {
   }
 });
 
+
+let visitors = new Map();
+
+router.get("/online-users", (req, res) => {
+  res.json({
+    count: visitors.size,
+  });
+});
+
 // ================= GET RANDOM JOKE =================
 router.get("/random", async (req, res) => {
   try {
