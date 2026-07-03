@@ -52,7 +52,7 @@ io.on("connection", (socket) => {
 
     console.log(`User ${userId} connected (${count + 1})`);
 
-    io.emit("onlineUsers", onlineUsers.size);
+    io.emit("onlineUsers", io.engine.clientsCount);
   });
 
   // JOIN JOKE ROOM
